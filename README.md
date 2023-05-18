@@ -41,11 +41,12 @@ npm install
 npm run dev
 ```
 
-5. Open your browser and navigate to http://localhost:3000.
+5. Open your browser and navigate to http://localhost:5173.
 
 ## Configuration
 
 The application currently uses mock data for demonstration purposes. However, you will need to connect the backend functionality and configure the game settings in the host portal once it's implemented.
+You can see where it is at hosted on Netlify:  https://football-squares.netlify.app/
 
 ## Contributing
 
