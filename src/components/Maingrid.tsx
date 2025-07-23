@@ -31,6 +31,12 @@ function Maingrid() {
   const handleSquareClick = (squareId: string) => {
     if (!game || userType !== 'player' || !playerName || !userCode) return;
     
+    // Check if game selections are locked
+    if (game.isLocked) {
+      alert('Square selections have been locked by the host. No more changes are allowed.');
+      return;
+    }
+    
     const square = game.squares.find(s => s.id === squareId);
     if (!square || square.claimed) return;
     
@@ -124,8 +130,14 @@ function Maingrid() {
         {/* Prize Information */}
         <div className="mb-4 text-sm">
           <div className="bg-green-900 px-4 py-2 rounded-lg inline-block">
-            <div className="font-bold">Prize per Quarter: ${game.prizePerQuarter}</div>
-            <div>Total Prize Pool: ${game.totalPrizePool}</div>
+            <div className="font-bold">Prize Distribution:</div>
+            <div className="text-xs grid grid-cols-2 gap-2 mt-1">
+              <div>Q1: ${game.prizeDistribution?.quarter1 || 25}</div>
+              <div>Q2: ${game.prizeDistribution?.quarter2 || 25}</div>
+              <div>Q3: ${game.prizeDistribution?.quarter3 || 25}</div>
+              <div>Final: ${game.prizeDistribution?.quarter4 || 25}</div>
+            </div>
+            <div className="font-bold mt-1">Total Prize Pool: ${game.totalPrizePool}</div>
           </div>
         </div>
         
@@ -134,13 +146,21 @@ function Maingrid() {
             <div className="text-lg">
               Welcome, <span className="font-bold">{playerName}</span>!
             </div>
-            <div className="text-sm">
-              You can select <span className="font-bold text-yellow-400">{getRemainingSquares()}</span> more squares
-            </div>
-            <div className="text-xs text-gray-400">
-              ({userCode.squaresAllowed} squares allowed total)
-            </div>
-            {selectedSquares.length > 0 && (
+            {game.isLocked ? (
+              <div className="text-red-400 font-bold text-sm">
+                🔒 Square selections are locked. No more changes allowed.
+              </div>
+            ) : (
+              <>
+                <div className="text-sm">
+                  You can select <span className="font-bold text-yellow-400">{getRemainingSquares()}</span> more squares
+                </div>
+                <div className="text-xs text-gray-400">
+                  ({userCode.squaresAllowed} squares allowed total)
+                </div>
+              </>
+            )}
+            {selectedSquares.length > 0 && !game.isLocked && (
               <button
                 onClick={handleSubmitSquares}
                 disabled={loading}
@@ -236,7 +256,7 @@ function Maingrid() {
                           <div className="text-gray-400">No winner</div>
                         )}
                         <div className="text-xs text-gray-500 mt-1">
-                          ${game.prizePerQuarter}
+                          ${game.prizeDistribution?.[`quarter${quarter}` as keyof typeof game.prizeDistribution] || 25}
                         </div>
                       </>
                     ) : (
