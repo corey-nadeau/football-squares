@@ -3,18 +3,23 @@ import {
   signInAnonymously, 
   signOut, 
   onAuthStateChanged, 
-  User as FirebaseUser 
+  User as FirebaseUser,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
   loading: boolean;
-  signInAsHost: () => Promise<void>;
+  signInAsHost: (email: string, password: string) => Promise<void>;
+  signUpAsHost: (email: string, password: string, hostName: string) => Promise<void>;
   signInAsPlayer: (userName: string, userCode: string) => Promise<void>;
   logout: () => Promise<void>;
   userType: 'host' | 'player' | null;
   playerName: string | null;
+  hostName: string | null;
   gameId: string | null;
 }
 
@@ -37,15 +42,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [userType, setUserType] = useState<'host' | 'player' | null>(null);
   const [playerName, setPlayerName] = useState<string | null>(null);
+  const [hostName, setHostName] = useState<string | null>(
+    localStorage.getItem('hostName')
+  );
   const [gameId, setGameId] = useState<string | null>(null);
 
-  const signInAsHost = async () => {
+  const signInAsHost = async (email: string, password: string) => {
     try {
-      await signInAnonymously(auth);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const hostName = userCredential.user.displayName || 'Unknown Host';
+      
       setUserType('host');
+      setHostName(hostName);
       localStorage.setItem('userType', 'host');
+      localStorage.setItem('hostName', hostName);
     } catch (error) {
       console.error('Error signing in as host:', error);
+      throw error;
+    }
+  };
+
+  const signUpAsHost = async (email: string, password: string, hostName: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Update the user's profile with their display name
+      await updateProfile(userCredential.user, {
+        displayName: hostName
+      });
+      
+      setUserType('host');
+      setHostName(hostName);
+      localStorage.setItem('userType', 'host');
+      localStorage.setItem('hostName', hostName);
+    } catch (error) {
+      console.error('Error signing up as host:', error);
       throw error;
     }
   };
@@ -69,9 +100,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await signOut(auth);
       setUserType(null);
       setPlayerName(null);
+      setHostName(null);
       setGameId(null);
       localStorage.removeItem('userType');
       localStorage.removeItem('playerName');
+      localStorage.removeItem('hostName');
       localStorage.removeItem('userCode');
       localStorage.removeItem('gameId');
     } catch (error) {
@@ -94,6 +127,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUserType(savedUserType);
         setPlayerName(savedPlayerName);
         setGameId(savedGameId);
+        
+        // For hosts, get name from user profile or localStorage
+        if (savedUserType === 'host') {
+          const hostName = user.displayName || localStorage.getItem('hostName') || 'Unknown Host';
+          setHostName(hostName);
+          localStorage.setItem('hostName', hostName);
+        }
       }
     });
 
@@ -104,10 +144,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     currentUser,
     loading,
     signInAsHost,
+    signUpAsHost,
     signInAsPlayer,
     logout,
     userType,
     playerName,
+    hostName,
     gameId,
   };
 

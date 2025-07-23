@@ -21,6 +21,8 @@ export interface GameSquare {
 export interface Game {
   id: string;
   hostId: string;
+  hostUserId: string; // Firebase User ID for secure host identification
+  hostName: string; // Display name for the host
   title: string;
   team1: string;
   team2: string;
@@ -30,12 +32,25 @@ export interface Game {
   isActive: boolean;
   isCompleted: boolean;
   createdAt: Date;
-  maxSquaresPerUser: number;
+  prizePerQuarter: number; // Prize amount for each quarter winner (total pool / 4)
+  totalPrizePool: number; // Total prize pool ($100 for full 100 square grid)
+  maxSquaresPerUser: number; // Maximum squares a user can select
   currentQuarter: number;
+  quarterWinners: {
+    quarter: number;
+    team1Score: number;
+    team2Score: number;
+    winningSquareId?: string;
+    winnerName?: string;
+    winnerEmail?: string;
+    prizeAmount: number;
+  }[]; // Track winners for each quarter
   scores: {
     team1: number;
     team2: number;
     quarter: number;
+    winningSquare?: string; // Which square won this quarter
+    winner?: string; // Player name who won this quarter
   }[];
 }
 
@@ -47,4 +62,7 @@ export interface UserCode {
   createdAt: Date;
   usedAt?: Date;
   assignedUserName?: string;
+  squaresAllowed: number; // Number of squares this player can pick
+  playerName?: string; // New: Name assigned by host when creating code
+  playerEmail?: string; // New: Email for sending invitation link
 }

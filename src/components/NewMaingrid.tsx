@@ -113,6 +113,18 @@ function Maingrid() {
           {game.team1} vs {game.team2}
         </div>
         
+        {/* Prize and Rules Disclosure */}
+        <div className="max-w-4xl mx-auto mb-6 p-4 bg-yellow-900 border border-yellow-600 rounded-lg">
+          <h3 className="font-bold text-yellow-300 mb-2">🏈 Game Rules & Prize Structure</h3>
+          <div className="text-sm text-yellow-200 space-y-1">
+            <p>• Total Prize Pool: <strong>$100</strong> (same grid used for all quarters)</p>
+            <p>• Q1, Q2, Q3 Winners: <strong>$25 each</strong></p>
+            <p>• Final Score Winner: <strong>$25</strong></p>
+            <p>• <strong>Important:</strong> There is no separate 4th quarter score - the final score is used (including overtime if applicable)</p>
+            <p>• Winners are determined by the last digit of each team's score</p>
+          </div>
+        </div>
+        
         {userType === 'player' && (
           <div className="mb-4">
             <div className="text-lg">

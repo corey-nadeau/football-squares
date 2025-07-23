@@ -4,33 +4,89 @@ import { validateUserCode, useUserCode } from '../services/gameService';
 
 const Login: React.FC = () => {
   const [loginType, setLoginType] = useState<'host' | 'player' | null>(null);
+  const [isHostSignUp, setIsHostSignUp] = useState(false);
   const [playerName, setPlayerName] = useState('');
   const [userCode, setUserCode] = useState('');
+  const [hostName, setHostName] = useState('');
+  const [hostEmail, setHostEmail] = useState('');
+  const [hostPassword, setHostPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signInAsHost, signInAsPlayer } = useAuth();
+  const { signInAsHost, signUpAsHost, signInAsPlayer } = useAuth();
 
-  const handleHostLogin = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      await signInAsHost();
-    } catch (error: any) {
-      console.error('Host login error:', error);
-      let errorMessage = 'Failed to sign in as host';
-      
-      if (error.code === 'auth/configuration-not-found') {
-        errorMessage = 'Firebase Authentication not configured. Please enable Anonymous auth in Firebase Console.';
-      } else if (error.code === 'auth/api-key-not-valid') {
-        errorMessage = 'Invalid Firebase API key. Please check your configuration.';
-      } else if (error.message) {
-        errorMessage = `Error: ${error.message}`;
+  const handleHostLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    if (isHostSignUp) {
+      // Handle host registration
+      if (!hostName.trim() || !hostEmail.trim() || !hostPassword.trim()) {
+        setError('Please fill in all fields');
+        return;
       }
       
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
+      if (hostPassword.length < 6) {
+        setError('Password must be at least 6 characters long');
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        setError('');
+        
+        await signUpAsHost(hostEmail, hostPassword, hostName);
+        
+      } catch (error: any) {
+        console.error('Host registration error:', error);
+        let errorMessage = 'Failed to create account';
+        
+        if (error.code === 'auth/email-already-in-use') {
+          errorMessage = 'An account with this email already exists. Please sign in instead.';
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = 'Please enter a valid email address.';
+        } else if (error.code === 'auth/weak-password') {
+          errorMessage = 'Password is too weak. Please choose a stronger password.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Handle host login
+      if (!hostEmail.trim() || !hostPassword.trim()) {
+        setError('Please enter your email and password');
+        return;
+      }
+      
+      try {
+        setLoading(true);
+        setError('');
+        
+        await signInAsHost(hostEmail, hostPassword);
+        
+      } catch (error: any) {
+        console.error('Host login error:', error);
+        let errorMessage = 'Failed to sign in';
+        
+        if (error.code === 'auth/invalid-email') {
+          errorMessage = 'Please enter a valid email address.';
+        } else if (error.code === 'auth/user-not-found') {
+          errorMessage = 'No account found with this email. Please sign up first.';
+        } else if (error.code === 'auth/wrong-password') {
+          errorMessage = 'Incorrect password. Please try again.';
+        } else if (error.code === 'auth/invalid-credential') {
+          errorMessage = 'Invalid email or password. Please check your credentials.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -114,7 +170,7 @@ const Login: React.FC = () => {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="bg-gray-900 p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
           <h2 className="text-2xl font-bold text-white text-center mb-6">
-            Host Login
+            {isHostSignUp ? 'Create Host Account' : 'Host Login'}
           </h2>
           
           {error && (
@@ -123,22 +179,86 @@ const Login: React.FC = () => {
             </div>
           )}
           
-          <div className="space-y-4">
+          <form onSubmit={(e) => { e.preventDefault(); handleHostLogin(); }} className="space-y-4">
+            {isHostSignUp && (
+              <div>
+                <label className="block text-sm font-bold mb-2 text-white">
+                  Host Name
+                </label>
+                <input
+                  type="text"
+                  value={hostName}
+                  onChange={(e) => setHostName(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                  placeholder="Enter your name"
+                  required
+                />
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-bold mb-2 text-white">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={hostEmail}
+                onChange={(e) => setHostEmail(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-bold mb-2 text-white">
+                Password
+              </label>
+              <input
+                type="password"
+                value={hostPassword}
+                onChange={(e) => setHostPassword(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                placeholder="Enter your password"
+                minLength={6}
+                required
+              />
+              {isHostSignUp && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Password must be at least 6 characters long
+                </p>
+              )}
+            </div>
+            
             <button
-              onClick={handleHostLogin}
+              type="submit"
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-3 px-4 rounded-lg transition-colors"
             >
-              {loading ? 'Signing in...' : 'Sign in as Host'}
+              {loading ? (isHostSignUp ? 'Creating Account...' : 'Signing in...') : (isHostSignUp ? 'Create Account' : 'Sign In')}
             </button>
             
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHostSignUp(!isHostSignUp);
+                  setError('');
+                }}
+                className="text-blue-400 hover:text-blue-300 text-sm"
+              >
+                {isHostSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </button>
+            </div>
+            
             <button
+              type="button"
               onClick={() => setLoginType(null)}
               className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
             >
               Back
             </button>
-          </div>
+          </form>
         </div>
       </div>
     );
