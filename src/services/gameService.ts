@@ -5,6 +5,7 @@ import {
   updateDoc, 
   getDocs, 
   getDoc, 
+  deleteDoc,
   query, 
   where, 
   onSnapshot,
@@ -323,6 +324,62 @@ export const getUserCodeByName = async (gameId: string, userName: string): Promi
     return null;
   } catch (error) {
     console.error('Error getting user code by name:', error);
+    throw error;
+  }
+};
+
+// Game management functions
+export const deleteGame = async (gameId: string): Promise<void> => {
+  try {
+    // First, delete all user codes associated with this game
+    const userCodesQuery = query(
+      collection(db, 'userCodes'),
+      where('gameId', '==', gameId)
+    );
+    const userCodesSnapshot = await getDocs(userCodesQuery);
+    
+    // Delete all user codes in batch
+    const deletePromises = userCodesSnapshot.docs.map(doc => 
+      deleteDoc(doc.ref)
+    );
+    await Promise.all(deletePromises);
+    
+    // Then delete the game itself
+    const gameRef = doc(db, 'games', gameId);
+    await deleteDoc(gameRef);
+    
+    console.log('Game and associated user codes deleted successfully');
+  } catch (error) {
+    console.error('Error deleting game:', error);
+    throw error;
+  }
+};
+
+export const setGameActive = async (gameId: string, isActive: boolean): Promise<void> => {
+  try {
+    const gameRef = doc(db, 'games', gameId);
+    await updateDoc(gameRef, { isActive });
+  } catch (error) {
+    console.error('Error updating game active status:', error);
+    throw error;
+  }
+};
+
+export const getAllHostGames = async (hostUserId: string): Promise<Game[]> => {
+  try {
+    const q = query(
+      collection(db, 'games'), 
+      where('hostUserId', '==', hostUserId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Game[];
+  } catch (error) {
+    console.error('Error getting all host games:', error);
     throw error;
   }
 };

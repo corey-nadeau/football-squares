@@ -8,13 +8,18 @@ import {
   updateGameScores,
   updateUserCode,
   deleteUserCode,
-  getGamesByHost
+  getGamesByHost,
+  deleteGame,
+  getAllHostGames,
+  setGameActive
 } from '../services/gameService';
 import { Game, GameSquare, UserCode } from '../types';
 
 const HostDashboard: React.FC = () => {
   const { logout, currentUser, hostName: authenticatedHostName } = useAuth();
   const [currentGame, setCurrentGame] = useState<Game | null>(null);
+  const [allHostGames, setAllHostGames] = useState<Game[]>([]);
+  const [showGameManager, setShowGameManager] = useState(false);
   const [userCodes, setUserCodes] = useState<UserCode[]>([]);
   const [showCreateGame, setShowCreateGame] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,10 +48,81 @@ const HostDashboard: React.FC = () => {
   const [editPlayerEmail, setEditPlayerEmail] = useState('');
   const [editSquaresAllowed, setEditSquaresAllowed] = useState(5);
 
+  const loadAllHostGames = async () => {
+    if (currentUser) {
+      try {
+        const games = await getAllHostGames(currentUser.uid);
+        setAllHostGames(games);
+      } catch (error) {
+        console.error('Error loading all host games:', error);
+      }
+    }
+  };
+
+  const handleSwitchToGame = async (gameId: string) => {
+    try {
+      setLoading(true);
+      localStorage.setItem('gameId', gameId);
+      
+      subscribeToGame(gameId, (game) => {
+        setCurrentGame(game);
+      });
+      
+      loadUserCodes(gameId);
+      setShowGameManager(false);
+      
+    } catch (error) {
+      console.error('Error switching to game:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteGame = async (gameId: string, gameTitle: string) => {
+    if (window.confirm(`Are you sure you want to permanently delete the game "${gameTitle}"? This action cannot be undone and will remove all players and data associated with this game.`)) {
+      try {
+        setLoading(true);
+        await deleteGame(gameId);
+        
+        // If this was the current game, clear it
+        if (currentGame?.id === gameId) {
+          setCurrentGame(null);
+          localStorage.removeItem('gameId');
+        }
+        
+        // Reload the games list
+        await loadAllHostGames();
+        
+      } catch (error) {
+        console.error('Error deleting game:', error);
+        alert('Failed to delete game. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleToggleGameActive = async (gameId: string, isActive: boolean) => {
+    try {
+      await setGameActive(gameId, !isActive);
+      await loadAllHostGames();
+      
+      // If this is the current game, update it
+      if (currentGame?.id === gameId) {
+        setCurrentGame(prev => prev ? { ...prev, isActive: !isActive } : null);
+      }
+    } catch (error) {
+      console.error('Error toggling game active status:', error);
+    }
+  };
+
   useEffect(() => {
     const loadHostGames = async () => {
       if (currentUser) {
         try {
+          // Load all host games first
+          await loadAllHostGames();
+          
           // First, check for a specific game in localStorage
           const gameId = localStorage.getItem('gameId');
           if (gameId) {
@@ -139,6 +215,9 @@ const HostDashboard: React.FC = () => {
       localStorage.setItem('gameId', gameId);
       
       setShowCreateGame(false);
+      
+      // Reload all games to show the new one
+      await loadAllHostGames();
       
       // Subscribe to the new game
       const unsubscribe = subscribeToGame(gameId, (game) => {
@@ -264,7 +343,91 @@ const HostDashboard: React.FC = () => {
     }
   };
 
-  if (!currentGame && !showCreateGame) {
+  if (showGameManager && !currentGame && !showCreateGame) {
+    return (
+      <div className="min-h-screen bg-black text-white p-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">Manage Your Games</h1>
+            <button
+              onClick={logout}
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+            >
+              Logout
+            </button>
+          </div>
+          
+          <div className="space-y-4">
+            {allHostGames.map((game) => (
+              <div key={game.id} className="bg-gray-900 p-6 rounded-lg flex justify-between items-center">
+                <div className="flex-1">
+                  <h3 className="font-bold text-2xl">{game.title}</h3>
+                  <p className="text-gray-400 text-lg">{game.team1} vs {game.team2}</p>
+                  <p className="text-sm text-gray-500">
+                    Created: {game.createdAt ? (
+                      game.createdAt instanceof Date 
+                        ? game.createdAt.toLocaleDateString()
+                        : new Date((game.createdAt as any).seconds * 1000).toLocaleDateString()
+                    ) : 'Unknown'}
+                  </p>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <span className={`px-3 py-1 rounded text-sm ${game.isActive ? 'bg-green-600' : 'bg-gray-600'}`}>
+                      {game.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <span className="text-sm text-gray-400">
+                      {game.isCompleted ? 'Completed' : 'In Progress'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => handleSwitchToGame(game.id)}
+                    className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+                  >
+                    Switch To
+                  </button>
+                  <button
+                    onClick={() => handleToggleGameActive(game.id, game.isActive)}
+                    className={`px-4 py-2 rounded ${
+                      game.isActive 
+                        ? 'bg-yellow-600 hover:bg-yellow-700' 
+                        : 'bg-green-600 hover:bg-green-700'
+                    }`}
+                  >
+                    {game.isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteGame(game.id, game.title)}
+                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+            
+            <div className="flex justify-center space-x-4 mt-8">
+              <button
+                onClick={() => setShowCreateGame(true)}
+                className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg"
+              >
+                Create New Game
+              </button>
+              <button
+                onClick={() => setShowGameManager(false)}
+                className="bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-lg"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentGame && !showCreateGame && !showGameManager) {
     return (
       <div className="min-h-screen bg-black text-white p-6">
         <div className="max-w-4xl mx-auto">
@@ -279,13 +442,27 @@ const HostDashboard: React.FC = () => {
           </div>
           
           <div className="text-center">
-            <h2 className="text-xl mb-4">No active game</h2>
-            <button
-              onClick={() => setShowCreateGame(true)}
-              className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg text-lg"
-            >
-              Create New Game
-            </button>
+            <h2 className="text-xl mb-4">No active game selected</h2>
+            <div className="space-y-4">
+              <button
+                onClick={() => setShowCreateGame(true)}
+                className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg text-lg block mx-auto"
+              >
+                Create New Game
+              </button>
+              
+              {allHostGames.length > 0 && (
+                <div>
+                  <p className="text-gray-400 mb-2">Or choose from your existing games:</p>
+                  <button
+                    onClick={() => setShowGameManager(true)}
+                    className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg text-lg"
+                  >
+                    Manage Existing Games ({allHostGames.length})
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -391,14 +568,110 @@ const HostDashboard: React.FC = () => {
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">{currentGame?.title}</h1>
-          <button
-            onClick={logout}
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
-          >
-            Logout
-          </button>
+          <div className="flex items-center space-x-4">
+            <h1 className="text-3xl font-bold">{currentGame?.title || 'Host Dashboard'}</h1>
+            {allHostGames.length > 1 && (
+              <button
+                onClick={() => setShowGameManager(true)}
+                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm"
+              >
+                Manage Games ({allHostGames.length})
+              </button>
+            )}
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowCreateGame(true)}
+              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
+            >
+              Create New Game
+            </button>
+            <button
+              onClick={logout}
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+            >
+              Logout
+            </button>
+          </div>
         </div>
+
+        {/* Game Manager Modal */}
+        {showGameManager && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-900 p-6 rounded-lg max-w-4xl w-full mx-4 max-h-96 overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4">Manage Your Games</h2>
+              
+              <div className="space-y-3">
+                {allHostGames.map((game) => (
+                  <div key={game.id} className="bg-gray-800 p-4 rounded flex justify-between items-center">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">{game.title}</h3>
+                      <p className="text-gray-400">{game.team1} vs {game.team2}</p>
+                      <p className="text-sm text-gray-500">
+                        Created: {game.createdAt ? (
+                          game.createdAt instanceof Date 
+                            ? game.createdAt.toLocaleDateString()
+                            : new Date((game.createdAt as any).seconds * 1000).toLocaleDateString()
+                        ) : 'Unknown'}
+                        {game.id === currentGame?.id && <span className=" text-green-400 ml-2">(Current)</span>}
+                      </p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className={`px-2 py-1 rounded text-xs ${game.isActive ? 'bg-green-600' : 'bg-gray-600'}`}>
+                          {game.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {game.isCompleted ? 'Completed' : 'In Progress'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      {game.id !== currentGame?.id && (
+                        <button
+                          onClick={() => handleSwitchToGame(game.id)}
+                          className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                        >
+                          Switch To
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleToggleGameActive(game.id, game.isActive)}
+                        className={`px-3 py-1 rounded text-sm ${
+                          game.isActive 
+                            ? 'bg-yellow-600 hover:bg-yellow-700' 
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                      >
+                        {game.isActive ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGame(game.id, game.title)}
+                        className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex justify-end space-x-2 mt-6">
+                <button
+                  onClick={() => setShowCreateGame(true)}
+                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
+                >
+                  Create New Game
+                </button>
+                <button
+                  onClick={() => setShowGameManager(false)}
+                  className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* User Codes Section */}
