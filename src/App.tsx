@@ -1,24 +1,69 @@
-// import Initial from './components/Initial'
-import Navbar1 from './components/Navbar'
-import Maingrid from './components/Maingrid'
-// import Amount from './components/PickAmount'
-import Review from './components/Review'
-// import Completed from './components/Completed'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './components/Login';
+import HostDashboard from './components/HostDashboard';
+import Maingrid from './components/Maingrid';
+import Navbar from './components/Navbar';
+import FirebaseTest from './components/FirebaseTest';
 
-function App() {
+// Protected Route component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useAuth();
+  return currentUser ? <>{children}</> : <Navigate to="/login" />;
+};
+
+// Main App Content
+const AppContent: React.FC = () => {
+  const { currentUser, userType } = useAuth();
+
+  if (!currentUser) {
+    return <Login />;
+  }
 
   return (
-    
-    <><Navbar1/>
-    {/* <Initial/> */}
-    {/* <Amount/> */}
-    <Review/>/
-    {/* <Completed/> */}
-        <Maingrid/>
-        <div className='h-full bg-black'></div>
-      
-    </>
-  )
+    <div className="min-h-screen bg-black">
+      <Navbar />
+      <Routes>
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              {userType === 'host' ? <HostDashboard /> : <Maingrid />}
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/game" 
+          element={
+            <ProtectedRoute>
+              <Maingrid />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              {userType === 'host' ? <HostDashboard /> : <Navigate to="/game" />}
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/test" element={<FirebaseTest />} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;
