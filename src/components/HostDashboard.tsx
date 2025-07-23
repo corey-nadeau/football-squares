@@ -12,7 +12,8 @@ import {
   deleteGame,
   getAllHostGames,
   setGameActive,
-  lockGameSelections
+  lockGameSelections,
+  randomizeGameNumbers
 } from '../services/gameService';
 import { Game, GameSquare, UserCode } from '../types';
 
@@ -40,7 +41,7 @@ const HostDashboard: React.FC = () => {
   const [squaresToAssign, setSquaresToAssign] = useState(5);
   const [playerName, setPlayerName] = useState('');
   const [playerEmail, setPlayerEmail] = useState('');
-  const [sendEmailInvite, setSendEmailInvite] = useState(false);
+  const [sendEmailInvite, setSendEmailInvite] = useState(true);
   
   // Score updating
   const [team1Score, setTeam1Score] = useState(0);
@@ -201,9 +202,9 @@ const HostDashboard: React.FC = () => {
         }
       }
       
-      // Create random numbers for rows and columns
-      const rowNumbers = Array.from({ length: 10 }, (_, i) => i).sort(() => Math.random() - 0.5);
-      const colNumbers = Array.from({ length: 10 }, (_, i) => i).sort(() => Math.random() - 0.5);
+      // Create ordered numbers for rows and columns (0-9)
+      const rowNumbers = Array.from({ length: 10 }, (_, i) => i);
+      const colNumbers = Array.from({ length: 10 }, (_, i) => i);
       
       const gameData = {
         hostId: 'host', // Since we're using anonymous auth
@@ -374,6 +375,24 @@ const HostDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error locking game selections:', error);
       alert('Failed to lock selections. Please try again.');
+    }
+  };
+
+  const handleRandomizeNumbers = async () => {
+    if (!currentGame) return;
+    
+    const confirmMessage = `Randomize the grid numbers? This will:\n\n• Shuffle the row and column numbers (0-9)\n• Change which squares win for each score combination\n• This is typically done after all squares are sold\n\nContinue?`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+    
+    try {
+      await randomizeGameNumbers(currentGame.id);
+      alert('Grid numbers have been randomized!');
+    } catch (error) {
+      console.error('Error randomizing numbers:', error);
+      alert('Failed to randomize numbers. Please try again.');
     }
   };
 
@@ -961,21 +980,40 @@ const HostDashboard: React.FC = () => {
               <div className="bg-yellow-900 p-4 rounded border border-yellow-600">
                 <h3 className="font-bold text-yellow-300 mb-2">Game Control</h3>
                 {!currentGame?.isLocked ? (
-                  <div>
-                    <p className="text-sm text-yellow-200 mb-3">
-                      Players can still select squares. Lock selections when ready to start the game.
-                    </p>
-                    <button
-                      onClick={handleLockSelections}
-                      className="w-full bg-yellow-600 hover:bg-yellow-700 text-yellow-100 py-2 rounded font-bold"
-                    >
-                      🔒 Lock Square Selections
-                    </button>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-yellow-200 mb-2">
+                        Players can still select squares. Lock selections when ready to start the game.
+                      </p>
+                      <button
+                        onClick={handleLockSelections}
+                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-yellow-100 py-2 rounded font-bold"
+                      >
+                        🔒 Lock Square Selections
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-sm text-yellow-200 mb-2">
+                        Randomize grid numbers (typically done after all squares are sold):
+                      </p>
+                      <button
+                        onClick={handleRandomizeNumbers}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-blue-100 py-2 rounded font-bold"
+                      >
+                        🎲 Randomize Grid Numbers
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center">
                     <p className="text-yellow-200 font-bold">🔒 Square Selections Locked</p>
                     <p className="text-xs text-yellow-300 mt-1">Players can no longer change their selections</p>
+                    <button
+                      onClick={handleRandomizeNumbers}
+                      className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-blue-100 py-2 rounded font-bold"
+                    >
+                      🎲 Randomize Grid Numbers
+                    </button>
                   </div>
                 )}
               </div>

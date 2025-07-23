@@ -66,6 +66,24 @@ export const getGamesByHost = async (hostUserId: string): Promise<Game[]> => {
 
 export const updateGameSquares = async (gameId: string, squares: GameSquare[]) => {
   try {
+    // Get the current game state to check for conflicts
+    const currentGame = await getGame(gameId);
+    if (!currentGame) throw new Error('Game not found');
+    
+    // Check if any of the squares we're trying to claim are already claimed
+    const conflicts: string[] = [];
+    squares.forEach(newSquare => {
+      const currentSquare = currentGame.squares.find(s => s.id === newSquare.id);
+      if (currentSquare?.claimed && newSquare.claimed && 
+          currentSquare.userName !== newSquare.userName) {
+        conflicts.push(newSquare.id);
+      }
+    });
+    
+    if (conflicts.length > 0) {
+      throw new Error(`Some squares were already selected by another player. Please refresh and try again. Conflicted squares: ${conflicts.join(', ')}`);
+    }
+    
     const gameRef = doc(db, 'games', gameId);
     await updateDoc(gameRef, { squares });
   } catch (error) {
@@ -430,6 +448,20 @@ export const lockGameSelections = async (gameId: string): Promise<void> => {
     await updateDoc(gameRef, { isLocked: true });
   } catch (error) {
     console.error('Error locking game selections:', error);
+    throw error;
+  }
+};
+
+export const randomizeGameNumbers = async (gameId: string): Promise<void> => {
+  try {
+    // Create new randomized numbers
+    const rowNumbers = Array.from({ length: 10 }, (_, i) => i).sort(() => Math.random() - 0.5);
+    const colNumbers = Array.from({ length: 10 }, (_, i) => i).sort(() => Math.random() - 0.5);
+    
+    const gameRef = doc(db, 'games', gameId);
+    await updateDoc(gameRef, { rowNumbers, colNumbers });
+  } catch (error) {
+    console.error('Error randomizing game numbers:', error);
     throw error;
   }
 };

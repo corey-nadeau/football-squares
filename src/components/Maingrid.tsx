@@ -77,27 +77,32 @@ function Maingrid() {
       
       await updateGameSquares(game.id, updatedSquares);
       setSelectedSquares([]);
-      alert('Squares submitted successfully!');
+      alert('Squares submitted successfully! 🎉');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting squares:', error);
-      alert('Error submitting squares. Please try again.');
+      
+      // Check for conflict error and show specific message
+      if (error.message.includes('already selected by another player')) {
+        alert('⚠️ ' + error.message);
+        // Clear selected squares since they're no longer valid
+        setSelectedSquares([]);
+      } else {
+        alert('Error submitting squares. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const getSquareColor = (square: GameSquare) => {
-    if (selectedSquares.includes(square.id)) {
-      return 'shadow-yellow-500';
-    }
     if (square.claimed) {
       if (square.userName === playerName) {
-        return 'shadow-blue-500'; // Your squares
+        return 'bg-blue-700 text-blue-100 border-blue-500'; // Your squares
       }
-      return 'shadow-red-500'; // Other players' squares
+      return 'bg-green-700 text-green-100 border-green-500'; // Other players' squares
     }
-    return 'shadow-white';
+    return 'bg-gray-800 text-gray-400'; // Available squares
   };
 
   const getUserSquareCount = () => {
@@ -140,6 +145,53 @@ function Maingrid() {
             <div className="font-bold mt-1">Total Prize Pool: ${game.totalPrizePool}</div>
           </div>
         </div>
+
+        {/* Current Scores and Winners - Moved to Top */}
+        {game.scores.length > 0 && (
+          <div className="mb-6 bg-gray-900 p-4 rounded-lg mx-4">
+            <h2 className="text-xl font-bold mb-4">🏈 Live Scores</h2>
+            <div className="flex justify-center space-x-8 mb-6">
+              <div className="text-center">
+                <div className="text-lg font-bold text-blue-400">{game.team1}</div>
+                <div className="text-3xl text-blue-400">{game.scores[game.scores.length - 1]?.team1 || 0}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-red-400">{game.team2}</div>
+                <div className="text-3xl text-red-400">{game.scores[game.scores.length - 1]?.team2 || 0}</div>
+              </div>
+            </div>
+            
+            {/* Quarter Winners */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(quarter => {
+                const quarterScore = game.scores.find(s => s.quarter === quarter);
+                const quarterWinner = game.quarterWinners?.find(w => w.quarter === quarter);
+                return (
+                  <div key={quarter} className="bg-gray-800 p-3 rounded-lg">
+                    <div className="font-bold mb-2">{quarter === 4 ? 'Final' : `Q${quarter}`}</div>
+                    {quarterScore ? (
+                      <>
+                        <div className="text-sm mb-1">
+                          {quarterScore.team1} - {quarterScore.team2}
+                        </div>
+                        {quarterWinner && quarterWinner.winnerName !== 'No Winner (Square not sold)' ? (
+                          <div className="text-green-400 font-bold text-xs">
+                            🏆 {quarterWinner.winnerName}
+                            <div className="text-green-300">${quarterWinner.prizeAmount}</div>
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 text-xs">No winner</div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-gray-400 text-xs">Pending</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {userType === 'player' && userCode && (
           <div className="mb-4">
@@ -178,7 +230,7 @@ function Maingrid() {
         {/* Top row headers */}
         <div className="text-xl text-center">🏈</div>
         {game.colNumbers.map((num, index) => (
-          <div key={`col-${index}`} className="border border-white h-8 w-8 md:w-12 md:h-12 flex items-center justify-center font-bold shadow-md shadow-green-500 text-base">
+          <div key={`col-${index}`} className="border border-gray-600 h-8 w-8 md:w-12 md:h-12 bg-blue-800 text-blue-100 flex items-center justify-center font-bold text-base">
             {num}
           </div>
         ))}
@@ -187,7 +239,7 @@ function Maingrid() {
         {Array.from({ length: 10 }, (_, rowIndex) => (
           <React.Fragment key={`row-${rowIndex}`}>
             {/* Row header */}
-            <div className="border border-white h-8 w-8 md:w-12 md:h-12 flex items-center justify-center font-bold shadow-md shadow-green-500 text-base">
+            <div className="border border-gray-600 h-8 w-8 md:w-12 md:h-12 bg-red-800 text-red-100 flex items-center justify-center font-bold text-base">
               {game.rowNumbers[rowIndex]}
             </div>
             
@@ -202,10 +254,11 @@ function Maingrid() {
                   key={squareId}
                   onClick={() => isClickable && handleSquareClick(squareId)}
                   className={`
-                    border border-white h-8 w-8 md:w-12 md:h-12 flex items-center justify-center font-bold text-xs
-                    shadow-md ${square ? getSquareColor(square) : 'shadow-white'}
-                    ${isClickable ? 'cursor-pointer hover:bg-gray-700' : ''}
-                    ${selectedSquares.includes(squareId) ? 'bg-yellow-900' : ''}
+                    border border-gray-600 h-8 w-8 md:w-12 md:h-12 flex items-center justify-center font-bold text-xs
+                    ${square ? getSquareColor(square) : 'bg-gray-800 text-gray-400'}
+                    ${isClickable ? 'cursor-pointer hover:bg-gray-600 hover:text-white' : ''}
+                    ${selectedSquares.includes(squareId) ? 'bg-yellow-600 text-yellow-100 border-yellow-400' : ''}
+                    transition-colors duration-200
                   `}
                 >
                   {square?.userInitials || ''}
@@ -216,82 +269,28 @@ function Maingrid() {
         ))}
       </div>
 
-      {/* Current Scores and Winners */}
-      {game.scores.length > 0 && (
-        <div className="text-center py-8">
-          <h2 className="text-xl font-bold mb-4">Current Scores</h2>
-          <div className="flex justify-center space-x-8 mb-6">
-            <div className="text-center">
-              <div className="text-lg font-bold">{game.team1}</div>
-              <div className="text-3xl text-blue-400">{game.scores[game.scores.length - 1]?.team1 || 0}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold">{game.team2}</div>
-              <div className="text-3xl text-red-400">{game.scores[game.scores.length - 1]?.team2 || 0}</div>
-            </div>
-          </div>
-          <div className="text-sm text-gray-400 mb-6">
-            Quarter {game.scores[game.scores.length - 1]?.quarter || 1}
-          </div>
-          
-          {/* Quarter Winners */}
-          <div className="max-w-2xl mx-auto">
-            <h3 className="text-lg font-bold mb-4">Quarter Winners</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map(quarter => {
-                const quarterScore = game.scores.find(s => s.quarter === quarter);
-                return (
-                  <div key={quarter} className="bg-gray-800 p-4 rounded-lg">
-                    <div className="font-bold mb-2">Q{quarter}</div>
-                    {quarterScore ? (
-                      <>
-                        <div className="text-sm mb-1">
-                          {quarterScore.team1} - {quarterScore.team2}
-                        </div>
-                        {quarterScore.winner ? (
-                          <div className="text-green-400 font-bold">
-                            🏆 {quarterScore.winner}
-                          </div>
-                        ) : (
-                          <div className="text-gray-400">No winner</div>
-                        )}
-                        <div className="text-xs text-gray-500 mt-1">
-                          ${game.prizeDistribution?.[`quarter${quarter}` as keyof typeof game.prizeDistribution] || 25}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-gray-400">Pending</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Legend */}
       <div className="text-center py-8 space-y-2">
         <h3 className="text-lg font-bold mb-4">Legend</h3>
         <div className="flex justify-center space-x-6 text-sm flex-wrap gap-y-2">
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 border border-white shadow-md shadow-white"></div>
+            <div className="w-4 h-4 bg-gray-800 border border-gray-600"></div>
             <span>Available</span>
           </div>
           {userType === 'player' && (
             <>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border border-white shadow-md shadow-yellow-500"></div>
+                <div className="w-4 h-4 bg-yellow-600 border border-yellow-400"></div>
                 <span>Selected</span>
               </div>
               <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border border-white shadow-md shadow-blue-500"></div>
+                <div className="w-4 h-4 bg-blue-700 border border-blue-500"></div>
                 <span>Your Squares</span>
               </div>
             </>
           )}
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 border border-white shadow-md shadow-red-500"></div>
+            <div className="w-4 h-4 bg-green-700 border border-green-500"></div>
             <span>Other Players</span>
           </div>
         </div>
