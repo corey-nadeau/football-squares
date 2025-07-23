@@ -58,6 +58,7 @@ export interface Game {
     winningSquare?: string; // Which square won this quarter
     winner?: string; // Player name who won this quarter
   }[];
+  nflGameId?: string; // Optional NFL API game ID for real-time score updates
 }
 
 export interface UserCode {

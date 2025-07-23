@@ -465,3 +465,16 @@ export const randomizeGameNumbers = async (gameId: string): Promise<void> => {
     throw error;
   }
 };
+
+export const completeGame = async (gameId: string): Promise<void> => {
+  try {
+    const gameRef = doc(db, 'games', gameId);
+    await updateDoc(gameRef, { 
+      isCompleted: true,
+      isActive: false
+    });
+  } catch (error) {
+    console.error('Error completing game:', error);
+    throw error;
+  }
+};

@@ -13,8 +13,10 @@ import {
   getAllHostGames,
   setGameActive,
   lockGameSelections,
-  randomizeGameNumbers
+  randomizeGameNumbers,
+  completeGame
 } from '../services/gameService';
+import { fetchUpcomingGames, fetchLiveScores, NFLGame } from '../services/nflApiService';
 import { Game, GameSquare, UserCode } from '../types';
 
 const HostDashboard: React.FC = () => {
@@ -36,6 +38,9 @@ const HostDashboard: React.FC = () => {
     quarter3: 25,
     quarter4: 25
   });
+  const [nflGames, setNflGames] = useState<NFLGame[]>([]);
+  const [selectedNflGame, setSelectedNflGame] = useState<NFLGame | null>(null);
+  const [useCustomTeams, setUseCustomTeams] = useState(false);
   
   // Code generation
   const [squaresToAssign, setSquaresToAssign] = useState(5);
@@ -167,6 +172,65 @@ const HostDashboard: React.FC = () => {
     loadHostGames();
   }, [currentUser]);
 
+  // Fetch NFL games on component mount
+  useEffect(() => {
+    fetchUpcomingGames().then(games => {
+      setNflGames(games);
+    }).catch(error => {
+      console.error('Error fetching NFL games:', error);
+    });
+  }, []);
+
+  // Auto-fetch NFL scores every 30 seconds for games with NFL IDs
+  useEffect(() => {
+    if (currentGame?.nflGameId) {
+      const interval = setInterval(fetchNFLScores, 30000); // 30 seconds
+      // Fetch immediately
+      fetchNFLScores();
+      
+      return () => clearInterval(interval);
+    }
+  }, [currentGame?.nflGameId]);
+
+  const resetCreateGameForm = () => {
+    setGameTitle('');
+    setTeam1('');
+    setTeam2('');
+    setSelectedNflGame(null);
+    setUseCustomTeams(false);
+    setPrizeDistribution({
+      quarter1: 25,
+      quarter2: 25,
+      quarter3: 25,
+      quarter4: 25
+    });
+  };
+
+  // Auto-fetch live scores for NFL games
+  const fetchNFLScores = async () => {
+    if (currentGame?.nflGameId) {
+      try {
+        const liveScores = await fetchLiveScores([currentGame.nflGameId]);
+        if (liveScores.length > 0) {
+          const scores = liveScores[0];
+          
+          // Update if scores have changed
+          if (scores.homeScore !== team1Score || scores.awayScore !== team2Score) {
+            setTeam1Score(scores.homeScore);
+            setTeam2Score(scores.awayScore);
+            
+            // Auto-update the game if scores changed
+            if (scores.quarter && scores.quarter !== currentQuarter) {
+              setCurrentQuarter(scores.quarter);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching live NFL scores:', error);
+      }
+    }
+  };
+
   const loadUserCodes = async (gameId: string) => {
     try {
       const codes = await getGameUserCodes(gameId);
@@ -183,6 +247,23 @@ const HostDashboard: React.FC = () => {
     const totalPrizes = prizeDistribution.quarter1 + prizeDistribution.quarter2 + prizeDistribution.quarter3 + prizeDistribution.quarter4;
     if (totalPrizes !== 100) {
       alert('Prize distribution must total exactly $100');
+      return;
+    }
+
+    // Validate team names
+    let finalTeam1 = team1;
+    let finalTeam2 = team2;
+    
+    if (!useCustomTeams && selectedNflGame) {
+      finalTeam1 = selectedNflGame.homeTeam;
+      finalTeam2 = selectedNflGame.awayTeam;
+    } else if (useCustomTeams) {
+      if (!team1.trim() || !team2.trim()) {
+        alert('Please enter both team names');
+        return;
+      }
+    } else {
+      alert('Please select an NFL game or choose custom teams');
       return;
     }
     
@@ -211,8 +292,8 @@ const HostDashboard: React.FC = () => {
         hostUserId: currentUser?.uid || '',
         hostName: authenticatedHostName || 'Unknown Host',
         title: gameTitle,
-        team1,
-        team2,
+        team1: finalTeam1,
+        team2: finalTeam2,
         squares,
         rowNumbers,
         colNumbers,
@@ -225,12 +306,14 @@ const HostDashboard: React.FC = () => {
         currentQuarter: 1,
         quarterWinners: [], // Initialize empty quarter winners array
         scores: [],
+        nflGameId: selectedNflGame?.id, // Store NFL game ID if selected
       };
       
       const gameId = await createGame(gameData);
       localStorage.setItem('gameId', gameId);
       
       setShowCreateGame(false);
+      resetCreateGameForm();
       
       // Reload all games to show the new one
       await loadAllHostGames();
@@ -396,6 +479,25 @@ const HostDashboard: React.FC = () => {
     }
   };
 
+  const handleCompleteGame = async () => {
+    if (!currentGame) return;
+    
+    const confirmMessage = `Complete and archive this game?\n\nThis will:\n• Mark the game as finished\n• Deactivate the game\n• Move it to completed games archive\n\nThis action cannot be undone. Continue?`;
+    
+    if (confirm(confirmMessage)) {
+      try {
+        await completeGame(currentGame.id);
+        alert('Game completed successfully!');
+        
+        // Reload games to refresh the list
+        await loadAllHostGames();
+      } catch (error) {
+        console.error('Error completing game:', error);
+        alert('Failed to complete game. Please try again.');
+      }
+    }
+  };
+
   if (showGameManager && !currentGame && !showCreateGame) {
     return (
       <div className="min-h-screen bg-black text-white p-6">
@@ -554,31 +656,89 @@ const HostDashboard: React.FC = () => {
               />
             </div>
             
+            {/* Team Selection */}
             <div>
-              <label className="block text-sm font-bold mb-2">Home Team</label>
-              <input
-                type="text"
-                value={team1}
-                onChange={(e) => setTeam1(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
-                placeholder="e.g. Chiefs"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-bold mb-2">Away Team</label>
-              <input
-                type="text"
-                value={team2}
-                onChange={(e) => setTeam2(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
-                placeholder="e.g. 49ers"
-                required
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                These are the actual teams playing (used for score tracking only)
-              </p>
+              <label className="block text-sm font-bold mb-2">Game Selection</label>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="radio"
+                    id="nfl-game"
+                    name="gameType"
+                    checked={!useCustomTeams}
+                    onChange={() => setUseCustomTeams(false)}
+                    className="text-blue-600"
+                  />
+                  <label htmlFor="nfl-game" className="text-sm">Use NFL Game</label>
+                </div>
+                
+                {!useCustomTeams && (
+                  <div>
+                    <select
+                      value={selectedNflGame?.id || ''}
+                      onChange={(e) => {
+                        const gameId = e.target.value;
+                        const game = nflGames.find(g => g.id === gameId);
+                        setSelectedNflGame(game || null);
+                      }}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                      required={!useCustomTeams}
+                    >
+                      <option value="">Select an NFL game...</option>
+                      {nflGames.map(game => (
+                        <option key={game.id} value={game.id}>
+                          {game.awayTeam} @ {game.homeTeam} - {new Date(game.date).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedNflGame && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Game: {selectedNflGame.awayTeam} @ {selectedNflGame.homeTeam}
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="radio"
+                    id="custom-teams"
+                    name="gameType"
+                    checked={useCustomTeams}
+                    onChange={() => setUseCustomTeams(true)}
+                    className="text-blue-600"
+                  />
+                  <label htmlFor="custom-teams" className="text-sm">Custom Teams</label>
+                </div>
+                
+                {useCustomTeams && (
+                  <>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Home Team</label>
+                      <input
+                        type="text"
+                        value={team1}
+                        onChange={(e) => setTeam1(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                        placeholder="e.g. Chiefs"
+                        required={useCustomTeams}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Away Team</label>
+                      <input
+                        type="text"
+                        value={team2}
+                        onChange={(e) => setTeam2(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                        placeholder="e.g. 49ers"
+                        required={useCustomTeams}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             
             <div>
@@ -662,7 +822,10 @@ const HostDashboard: React.FC = () => {
               
               <button
                 type="button"
-                onClick={() => setShowCreateGame(false)}
+                onClick={() => {
+                  setShowCreateGame(false);
+                  resetCreateGameForm();
+                }}
                 className="flex-1 bg-gray-600 hover:bg-gray-700 py-3 rounded"
               >
                 Cancel
@@ -1018,12 +1181,37 @@ const HostDashboard: React.FC = () => {
                 )}
               </div>
               
-              <button
-                onClick={handleUpdateScores}
-                className="w-full bg-green-600 hover:bg-green-700 py-3 rounded"
-              >
-                Update Scores
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleUpdateScores}
+                  className="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded"
+                >
+                  Update Scores
+                </button>
+                
+                {currentGame?.nflGameId && (
+                  <button
+                    onClick={fetchNFLScores}
+                    className="bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded"
+                    title="Refresh live NFL scores"
+                  >
+                    🔄
+                  </button>
+                )}
+              </div>
+              
+              {/* Game Management Actions */}
+              <div className="mt-4 pt-4 border-t border-gray-600">
+                <button
+                  onClick={handleCompleteGame}
+                  className="w-full bg-red-600 hover:bg-red-700 py-3 rounded font-bold"
+                >
+                  🏁 End & Archive Game
+                </button>
+                <p className="text-xs text-gray-400 mt-1 text-center">
+                  Complete the game and move it to archive
+                </p>
+              </div>
             </div>
           </div>
         </div>
