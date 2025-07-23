@@ -4,49 +4,79 @@ This is a web application built with React, Vite, TypeScript, and Tailwind CSS f
 
 ## Features
 
-- User-friendly interface for selecting and purchasing squares on the game board.
-- Real-time updates of purchased squares and game progress.
-- Automatic calculation of winners based on the final scores of each quarter.
-- Host portal for setting up and managing multiple game instances.
-- Admin functionality to monitor and control the game process.
-- Responsive design with Tailwind CSS for optimal viewing on different devices.
+- 🔐 **Authentication System**: Host and player login with Firebase
+- 👨‍💼 **Host Dashboard**: Create games, generate user codes, manage scores
+- 🎮 **Interactive Grid**: Real-time square selection and updates
+- 📱 **Responsive Design**: Works on mobile and desktop
+- 🔄 **Real-time Updates**: Live score and square updates via Firestore
 
-## Requirements
+## Quick Start
 
-To run this application, you need to have Node.js and npm (Node Package Manager) installed on your machine.
+### Prerequisites
+- Node.js and npm installed
+- Firebase project with Authentication and Firestore enabled
 
-## Installation
+### Installation
 
-1. Clone this repository to your local machine.
-
+1. Clone this repository:
 ```bash
-git clone https://github.com/corey-nadeau/football-square.git
+git clone https://github.com/corey-nadeau/football-squares.git
+cd football-squares
 ```
 
-2. Change to the project directory.
-
-```bash
-cd football-square
-```
-
-3. Install the dependencies.
-
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-4. Start the development server.
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
+Edit `.env.local` with your Firebase configuration.
 
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
-5. Open your browser and navigate to http://localhost:5173.
+5. Open your browser and navigate to http://localhost:5173
+
+## Firebase Setup
+
+1. Create a Firebase project at https://console.firebase.google.com/
+2. Enable **Authentication** → **Anonymous** sign-in method
+3. Create a **Firestore Database** in test mode
+4. Copy your Firebase config to `.env.local`
+
+## How to Play
+
+### For Hosts:
+1. Click "Host Login"
+2. Create a new game with team names
+3. Generate user codes for players who paid
+4. Update scores during the game
+5. Monitor winners in real-time
+
+### For Players:
+1. Get a user code from the host
+2. Click "Player Login" and enter your code
+3. Select your squares on the grid
+4. Watch the game and see if you win!
+
+## Deployment
+
+The app is configured for Netlify deployment. Set environment variables in Netlify dashboard under Site settings → Environment variables.
+
+Live demo: https://football-squares.netlify.app/
+
+## Security
+
+- Firebase credentials are stored as environment variables
+- `.env.local` is ignored by git to prevent credential exposure
+- Firestore security rules should be configured for production use
 
 ## Configuration
-
-The application currently uses mock data for demonstration purposes. However, you will need to connect the backend functionality and configure the game settings in the host portal once it's implemented.
-You can see where it is at hosted on Netlify:  https://football-squares.netlify.app/
 
 ## Contributing
 
