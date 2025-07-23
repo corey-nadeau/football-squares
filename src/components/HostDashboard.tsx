@@ -61,6 +61,10 @@ const HostDashboard: React.FC = () => {
   const [editPlayerEmail, setEditPlayerEmail] = useState('');
   const [editSquaresAllowed, setEditSquaresAllowed] = useState(5);
 
+  // Winner popup
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
+  const [winnerData, setWinnerData] = useState<any>(null);
+
   const loadAllHostGames = async () => {
     if (currentUser) {
       try {
@@ -369,25 +373,29 @@ const HostDashboard: React.FC = () => {
     try {
       const result = await updateGameScores(currentGame.id, team1Score, team2Score, currentQuarter);
       
-      // Show quarter result
-      const quarterLabel = currentQuarter === 4 ? 'Final Score' : `Quarter ${currentQuarter}`;
-      const winnerMessage = result.winner.winnerName === 'No Winner (Square not sold)' 
-        ? `${quarterLabel}: No winner - square not sold`
-        : `${quarterLabel} Winner: ${result.winner.winnerName} wins $${result.winner.prizeAmount}!`;
+      // Show winner modal instead of alert
+      setWinnerData({
+        quarter: currentQuarter,
+        quarterLabel: currentQuarter === 4 ? 'Final Score' : `Quarter ${currentQuarter}`,
+        winner: result.winner,
+        isGameComplete: result.isGameComplete,
+        nextQuarter: result.nextQuarter,
+        team1: currentGame.team1,
+        team2: currentGame.team2,
+        team1Score,
+        team2Score
+      });
+      setShowWinnerModal(true);
       
-      let message = `${quarterLabel} Results:\n${winnerMessage}`;
-      
-      if (result.isGameComplete) {
-        message += '\n\nGame Complete! All quarters finished.';
-      } else if (result.nextQuarter) {
-        message += `\n\nNow ready for Quarter ${result.nextQuarter}`;
+      // Update quarter state if needed
+      if (result.nextQuarter && !result.isGameComplete) {
         setCurrentQuarter(result.nextQuarter);
       }
       
-      alert(message);
       setQuarterResults([...quarterResults, result.winner]);
     } catch (error) {
       console.error('Error updating scores:', error);
+      alert('Error updating scores. Please try again.');
     }
   };
 
@@ -1083,7 +1091,42 @@ const HostDashboard: React.FC = () => {
           <div className="bg-gray-900 p-6 rounded-lg">
             <h2 className="text-xl font-bold mb-4">Score Management</h2>
             
-            <div className="space-y-4">
+            {/* Live Score Display for NFL Games */}
+            {currentGame?.nflGameId && (
+              <div className="mb-6 p-4 bg-blue-900/30 border border-blue-600 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-bold text-blue-300">🏈 Live NFL Scores</h3>
+                  <button
+                    onClick={fetchNFLScores}
+                    className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                  >
+                    🔄 Refresh
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="bg-gray-800 p-3 rounded">
+                    <div className="text-lg font-bold">{currentGame.team1}</div>
+                    <div className="text-2xl font-bold text-green-400">{team1Score}</div>
+                  </div>
+                  <div className="bg-gray-800 p-3 rounded">
+                    <div className="text-lg font-bold">{currentGame.team2}</div>
+                    <div className="text-2xl font-bold text-green-400">{team2Score}</div>
+                  </div>
+                </div>
+                <div className="text-center mt-2 text-sm text-gray-400">
+                  Quarter {currentQuarter} • Auto-updates every 30 seconds
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-4">{currentGame?.nflGameId && (
+                <div className="mb-4">
+                  <h4 className="text-md font-bold mb-2 text-gray-300">Manual Score Override</h4>
+                  <p className="text-sm text-gray-400 mb-3">
+                    Use these fields to manually adjust scores if needed
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold mb-2">{currentGame?.team1}</label>
@@ -1421,6 +1464,77 @@ const HostDashboard: React.FC = () => {
                 className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded font-medium"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Winner Modal */}
+      {showWinnerModal && winnerData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-8 rounded-lg max-w-md w-full mx-4 border-2 border-yellow-500">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🏆</div>
+              <h2 className="text-2xl font-bold text-yellow-400 mb-4">
+                {winnerData.quarterLabel} Results
+              </h2>
+              
+              <div className="bg-gray-900 p-4 rounded-lg mb-4">
+                <div className="text-lg font-bold mb-2">
+                  {winnerData.team1} {winnerData.team1Score} - {winnerData.team2} {winnerData.team2Score}
+                </div>
+                <div className="text-sm text-gray-400">
+                  Winning Numbers: {winnerData.team1} {winnerData.team1Score % 10}, {winnerData.team2} {winnerData.team2Score % 10}
+                </div>
+              </div>
+
+              {winnerData.winner.winnerName === 'No Winner (Square not sold)' ? (
+                <div className="text-center">
+                  <div className="text-xl text-red-400 font-bold mb-2">No Winner</div>
+                  <div className="text-gray-400">This square was not sold</div>
+                  <div className="text-lg font-bold text-yellow-400 mt-2">
+                    Prize: ${winnerData.winner.prizeAmount}
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    (Prize rolls over or returned to pool)
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="text-xl text-green-400 font-bold mb-2">🎉 Winner!</div>
+                  <div className="text-2xl font-bold text-white mb-2">
+                    {winnerData.winner.winnerName}
+                  </div>
+                  <div className="text-lg font-bold text-yellow-400">
+                    Wins ${winnerData.winner.prizeAmount}!
+                  </div>
+                </div>
+              )}
+
+              {winnerData.isGameComplete && (
+                <div className="mt-4 p-3 bg-purple-900/50 border border-purple-500 rounded">
+                  <div className="text-lg font-bold text-purple-300">🎊 Game Complete!</div>
+                  <div className="text-sm text-purple-200">All quarters have been played</div>
+                </div>
+              )}
+
+              {!winnerData.isGameComplete && winnerData.nextQuarter && (
+                <div className="mt-4 p-3 bg-blue-900/50 border border-blue-500 rounded">
+                  <div className="text-blue-300 font-bold">
+                    Ready for Quarter {winnerData.nextQuarter}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setShowWinnerModal(false);
+                  setWinnerData(null);
+                }}
+                className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-bold"
+              >
+                Continue
               </button>
             </div>
           </div>

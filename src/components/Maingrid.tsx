@@ -149,7 +149,15 @@ function Maingrid() {
         {/* Current Scores and Winners - Moved to Top */}
         {game.scores.length > 0 && (
           <div className="mb-6 bg-gray-900 p-4 rounded-lg mx-4">
-            <h2 className="text-xl font-bold mb-4">🏈 Live Scores</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">🏈 Live Scores</h2>
+              {game.nflGameId && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-green-400">Live NFL Updates</span>
+                </div>
+              )}
+            </div>
             <div className="flex justify-center space-x-8 mb-6">
               <div className="text-center">
                 <div className="text-lg font-bold text-blue-400">{game.team1}</div>
