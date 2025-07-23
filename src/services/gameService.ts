@@ -100,13 +100,17 @@ export const updateGameScores = async (
     const prizeAmount = game.totalPrizePool / 4;
     
     // Create quarter winner record - ensure no undefined values
+    const userEmail = winningSquare?.userId 
+      ? await getUserEmailFromSquare(winningSquare.userId) 
+      : null;
+    
     const quarterWinner = {
       quarter,
       team1Score,
       team2Score,
       winningSquareId: winningSquare?.id || null,
       winnerName: winningSquare?.userName || 'No Winner (Square not sold)',
-      winnerEmail: winningSquare?.userId ? await getUserEmailFromSquare(winningSquare.userId) : null,
+      winnerEmail: userEmail || null, // Ensure we never pass undefined
       prizeAmount: winningSquare ? prizeAmount : 0
     };
 
@@ -156,10 +160,10 @@ export const updateGameScores = async (
 };
 
 // Helper function to get user email (placeholder - implement based on your user system)
-const getUserEmailFromSquare = async (_userId: string): Promise<string | undefined> => {
+const getUserEmailFromSquare = async (_userId: string): Promise<string | null> => {
   // This would need to be implemented based on how you store user data
-  // For now, return undefined since we're using anonymous auth
-  return undefined;
+  // For now, return null since we're using anonymous auth
+  return null;
 };
 
 // User Code functions
