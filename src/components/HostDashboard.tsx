@@ -11,7 +11,8 @@ import {
   getGamesByHost,
   deleteGame,
   getAllHostGames,
-  setGameActive
+  setGameActive,
+  lockGameSelections
 } from '../services/gameService';
 import { Game, GameSquare, UserCode } from '../types';
 
@@ -28,6 +29,12 @@ const HostDashboard: React.FC = () => {
   const [gameTitle, setGameTitle] = useState('');
   const [team1, setTeam1] = useState('');
   const [team2, setTeam2] = useState('');
+  const [prizeDistribution, setPrizeDistribution] = useState({
+    quarter1: 25,
+    quarter2: 25,
+    quarter3: 25,
+    quarter4: 25
+  });
   
   // Code generation
   const [squaresToAssign, setSquaresToAssign] = useState(5);
@@ -171,6 +178,13 @@ const HostDashboard: React.FC = () => {
   const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate prize distribution totals $100
+    const totalPrizes = prizeDistribution.quarter1 + prizeDistribution.quarter2 + prizeDistribution.quarter3 + prizeDistribution.quarter4;
+    if (totalPrizes !== 100) {
+      alert('Prize distribution must total exactly $100');
+      return;
+    }
+    
     try {
       setLoading(true);
       
@@ -203,7 +217,8 @@ const HostDashboard: React.FC = () => {
         colNumbers,
         isActive: true,
         isCompleted: false,
-        prizePerQuarter: 25, // Fixed: $25 per quarter for $100 total
+        isLocked: false, // New: Allow square selection initially
+        prizeDistribution, // Use custom prize distribution
         totalPrizePool: 100, // Fixed: Total pool is always $100
         maxSquaresPerUser: 25, // Allow users to select up to 25 squares
         currentQuarter: 1,
@@ -340,6 +355,25 @@ const HostDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error deleting player:', error);
       alert('Failed to remove player');
+    }
+  };
+
+  const handleLockSelections = async () => {
+    if (!currentGame) return;
+    
+    const soldSquares = currentGame.squares.filter(s => s.claimed).length;
+    const confirmMessage = `Lock square selections? This will:\n\n• Prevent players from changing their selections\n• Finalize the game with ${soldSquares} squares sold\n• Start the game officially\n\nThis action cannot be undone. Continue?`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+    
+    try {
+      await lockGameSelections(currentGame.id);
+      alert('Square selections have been locked! The game is now officially started.');
+    } catch (error) {
+      console.error('Error locking game selections:', error);
+      alert('Failed to lock selections. Please try again.');
     }
   };
 
@@ -529,16 +563,73 @@ const HostDashboard: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-bold mb-2">Prize per Quarter ($)</label>
-              <input
-                type="number"
-                value={25}
-                readOnly
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded cursor-not-allowed"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Fixed: $25 per quarter for $100 total pool (same grid used for all quarters)
-              </p>
+              <label className="block text-sm font-bold mb-2">Prize Distribution ($100 Total)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Q1 Prize ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={prizeDistribution.quarter1}
+                    onChange={(e) => setPrizeDistribution(prev => ({
+                      ...prev,
+                      quarter1: parseInt(e.target.value) || 0
+                    }))}
+                    className="w-full px-2 py-1 bg-gray-800 border border-gray-600 rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Q2 Prize ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={prizeDistribution.quarter2}
+                    onChange={(e) => setPrizeDistribution(prev => ({
+                      ...prev,
+                      quarter2: parseInt(e.target.value) || 0
+                    }))}
+                    className="w-full px-2 py-1 bg-gray-800 border border-gray-600 rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Q3 Prize ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={prizeDistribution.quarter3}
+                    onChange={(e) => setPrizeDistribution(prev => ({
+                      ...prev,
+                      quarter3: parseInt(e.target.value) || 0
+                    }))}
+                    className="w-full px-2 py-1 bg-gray-800 border border-gray-600 rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Final Prize ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={prizeDistribution.quarter4}
+                    onChange={(e) => setPrizeDistribution(prev => ({
+                      ...prev,
+                      quarter4: parseInt(e.target.value) || 0
+                    }))}
+                    className="w-full px-2 py-1 bg-gray-800 border border-gray-600 rounded text-sm"
+                  />
+                </div>
+              </div>
+              <div className={`text-xs mt-1 ${
+                (prizeDistribution.quarter1 + prizeDistribution.quarter2 + prizeDistribution.quarter3 + prizeDistribution.quarter4) === 100 
+                  ? 'text-green-400' 
+                  : 'text-red-400'
+              }`}>
+                Total: ${prizeDistribution.quarter1 + prizeDistribution.quarter2 + prizeDistribution.quarter3 + prizeDistribution.quarter4} 
+                {(prizeDistribution.quarter1 + prizeDistribution.quarter2 + prizeDistribution.quarter3 + prizeDistribution.quarter4) !== 100 && ' (Must equal $100)'}
+              </div>
             </div>
             
             <div className="flex space-x-4">
@@ -855,15 +946,38 @@ const HostDashboard: React.FC = () => {
               <div className="bg-blue-900 p-4 rounded border border-blue-600">
                 <h3 className="font-bold text-blue-300 mb-2">Prize Structure</h3>
                 <ul className="text-sm text-blue-200 space-y-1">
-                  <li>• Q1 Winner: $25</li>
-                  <li>• Q2 Winner: $25</li>
-                  <li>• Q3 Winner: $25</li>
-                  <li>• Final Score Winner: $25</li>
+                  <li>• Q1 Winner: ${currentGame?.prizeDistribution?.quarter1 || 25}</li>
+                  <li>• Q2 Winner: ${currentGame?.prizeDistribution?.quarter2 || 25}</li>
+                  <li>• Q3 Winner: ${currentGame?.prizeDistribution?.quarter3 || 25}</li>
+                  <li>• Final Score Winner: ${currentGame?.prizeDistribution?.quarter4 || 25}</li>
                   <li>• Total Pool: $100</li>
                 </ul>
                 <p className="text-xs text-yellow-300 mt-2">
                   Same grid used for all quarters
                 </p>
+              </div>
+              
+              {/* Game Lock Control */}
+              <div className="bg-yellow-900 p-4 rounded border border-yellow-600">
+                <h3 className="font-bold text-yellow-300 mb-2">Game Control</h3>
+                {!currentGame?.isLocked ? (
+                  <div>
+                    <p className="text-sm text-yellow-200 mb-3">
+                      Players can still select squares. Lock selections when ready to start the game.
+                    </p>
+                    <button
+                      onClick={handleLockSelections}
+                      className="w-full bg-yellow-600 hover:bg-yellow-700 text-yellow-100 py-2 rounded font-bold"
+                    >
+                      🔒 Lock Square Selections
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-yellow-200 font-bold">🔒 Square Selections Locked</p>
+                    <p className="text-xs text-yellow-300 mt-1">Players can no longer change their selections</p>
+                  </div>
+                )}
               </div>
               
               <button
@@ -906,6 +1020,122 @@ const HostDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Master Grid */}
+        {currentGame && (
+          <div className="mt-8 bg-gray-900 p-6 rounded-lg">
+            <h2 className="text-xl font-bold mb-4">Master Grid - All Player Selections</h2>
+            <div className="overflow-x-auto">
+              <div className="inline-block min-w-full">
+                {/* Column headers (Team 2) */}
+                <div className="flex mb-2">
+                  <div className="w-8 h-8"></div> {/* Empty corner */}
+                  <div className="text-center font-bold text-sm mb-1 flex-1">{currentGame.team2}</div>
+                </div>
+                <div className="flex mb-2">
+                  <div className="w-8 h-8"></div> {/* Empty corner */}
+                  {currentGame.colNumbers.map((num, index) => (
+                    <div key={index} className="w-12 h-8 border border-gray-600 bg-blue-800 text-white text-xs flex items-center justify-center font-bold">
+                      {num}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Grid rows */}
+                {Array.from({ length: 10 }, (_, rowIndex) => (
+                  <div key={rowIndex} className="flex">
+                    {/* Row header (Team 1) */}
+                    {rowIndex === 0 && (
+                      <div className="w-8 flex items-center justify-center text-xs font-bold text-center transform -rotate-90 mb-2">
+                        {currentGame.team1}
+                      </div>
+                    )}
+                    {rowIndex !== 0 && <div className="w-8"></div>}
+                    <div className="w-12 h-12 border border-gray-600 bg-red-800 text-white text-xs flex items-center justify-center font-bold">
+                      {currentGame.rowNumbers[rowIndex]}
+                    </div>
+                    
+                    {/* Grid squares */}
+                    {Array.from({ length: 10 }, (_, colIndex) => {
+                      const square = currentGame.squares.find(s => s.row === rowIndex && s.col === colIndex);
+                      return (
+                        <div
+                          key={`${rowIndex}-${colIndex}`}
+                          className={`w-12 h-12 border border-gray-600 text-xs flex items-center justify-center ${
+                            square?.claimed 
+                              ? 'bg-green-800 text-green-100' 
+                              : 'bg-gray-700 text-gray-400'
+                          }`}
+                          title={square?.claimed ? `${square.userName}` : 'Available'}
+                        >
+                          <div className="text-center">
+                            {square?.claimed && (
+                              <div className="font-bold text-[10px] leading-none">
+                                {square.userInitials || square.userName?.substring(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 text-sm text-gray-400">
+              <p>• Green squares are claimed by players</p>
+              <p>• Gray squares are still available</p>
+              <p>• Hover over squares to see player names</p>
+            </div>
+          </div>
+        )}
+
+        {/* Quarter Winners */}
+        {currentGame?.quarterWinners && currentGame.quarterWinners.length > 0 && (
+          <div className="mt-8 bg-gray-900 p-6 rounded-lg">
+            <h2 className="text-xl font-bold mb-4">Quarter Winners</h2>
+            <div className="grid gap-4">
+              {currentGame.quarterWinners
+                .sort((a, b) => a.quarter - b.quarter)
+                .map((winner) => (
+                  <div 
+                    key={winner.quarter} 
+                    className="bg-green-900 border border-green-600 p-4 rounded-lg"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold text-green-300 text-lg">
+                          {winner.quarter === 4 ? 'Final Score' : `Quarter ${winner.quarter}`}
+                        </h3>
+                        <p className="text-green-200 text-sm">
+                          {currentGame.team1} {winner.team1Score} - {currentGame.team2} {winner.team2Score}
+                        </p>
+                        <p className="text-green-100 font-semibold mt-1">
+                          Winner: {winner.winnerName}
+                        </p>
+                        {winner.winnerEmail && (
+                          <p className="text-green-200 text-sm">
+                            Email: {winner.winnerEmail}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-green-300">
+                          ${winner.prizeAmount.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-green-400">
+                          Prize Won
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-green-300">
+                      Winning numbers: {currentGame.team1} {winner.team1Score % 10}, {currentGame.team2} {winner.team2Score % 10}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Edit Player Modal */}

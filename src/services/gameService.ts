@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Game, GameSquare, UserCode } from '../types';
-import { sendPlayerInvitation, getGameInvitationUrl } from './emailService';
+import { sendPlayerInvitation, getGameInvitationUrl, sendWinnerNotification } from './emailService';
 
 // Game functions
 export const createGame = async (gameData: Omit<Game, 'id' | 'createdAt'>) => {
@@ -96,8 +96,17 @@ export const updateGameScores = async (
       square.row === team1Index && square.col === team2Index
     );
 
-    // Calculate prize per quarter ($100 total / 4 quarters = $25 per quarter)
-    const prizeAmount = game.totalPrizePool / 4;
+    // Calculate prize amount based on custom distribution
+    const prizeDistribution = game.prizeDistribution || {
+      quarter1: 25, quarter2: 25, quarter3: 25, quarter4: 25
+    };
+    
+    const quarterKey = `quarter${quarter}` as keyof typeof prizeDistribution;
+    let baseQuarterPrize = prizeDistribution[quarterKey];
+    
+    // Adjust prize based on sold squares if not all squares are sold
+    const soldSquares = game.squares.filter(s => s.claimed).length;
+    const adjustedPrize = soldSquares < 100 ? (baseQuarterPrize * soldSquares) / 100 : baseQuarterPrize;
     
     // Create quarter winner record - ensure no undefined values
     const userEmail = winningSquare?.userId 
@@ -111,7 +120,7 @@ export const updateGameScores = async (
       winningSquareId: winningSquare?.id || null,
       winnerName: winningSquare?.userName || 'No Winner (Square not sold)',
       winnerEmail: userEmail || null, // Ensure we never pass undefined
-      prizeAmount: winningSquare ? prizeAmount : 0
+      prizeAmount: winningSquare ? adjustedPrize : 0
     };
 
     // Update quarter winners array - filter out any existing entry for this quarter
@@ -147,6 +156,26 @@ export const updateGameScores = async (
       currentQuarter: quarter,
       isCompleted
     });
+
+    // Send winner notification email if there's a winner
+    if (winningSquare && winningSquare.userName && quarterWinner.prizeAmount > 0) {
+      try {
+        await sendWinnerNotification({
+          gameTitle: game.title,
+          quarter,
+          winnerName: winningSquare.userName,
+          winnerEmail: userEmail,
+          prizeAmount: adjustedPrize,
+          team1: game.team1,
+          team2: game.team2,
+          team1Score,
+          team2Score
+        });
+      } catch (emailError) {
+        console.warn('Failed to send winner notification email:', emailError);
+        // Don't throw error - score update succeeded even if email failed
+      }
+    }
 
     return {
       winner: quarterWinner,
@@ -391,6 +420,16 @@ export const getAllHostGames = async (hostUserId: string): Promise<Game[]> => {
     })) as Game[];
   } catch (error) {
     console.error('Error getting all host games:', error);
+    throw error;
+  }
+};
+
+export const lockGameSelections = async (gameId: string): Promise<void> => {
+  try {
+    const gameRef = doc(db, 'games', gameId);
+    await updateDoc(gameRef, { isLocked: true });
+  } catch (error) {
+    console.error('Error locking game selections:', error);
     throw error;
   }
 };

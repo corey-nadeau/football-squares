@@ -10,6 +10,18 @@ interface EmailInvitation {
   gameUrl: string;
 }
 
+interface WinnerNotification {
+  gameTitle: string;
+  quarter: number;
+  winnerName: string;
+  winnerEmail: string | null;
+  prizeAmount: number;
+  team1: string;
+  team2: string;
+  team1Score: number;
+  team2Score: number;
+}
+
 // Netlify Function endpoint
 const EMAIL_API_ENDPOINT = '/.netlify/functions/send-email';
 
@@ -72,4 +84,54 @@ Game hosted by ${invitation.hostName}`);
 export const getGameInvitationUrl = (gameId: string, userCode: string): string => {
   const baseUrl = window.location.origin;
   return `${baseUrl}?gameId=${gameId}&code=${userCode}`;
+};
+
+export const sendWinnerNotification = async (notification: WinnerNotification): Promise<boolean> => {
+  if (!notification.winnerEmail) {
+    console.log('No email provided for winner notification');
+    return false;
+  }
+
+  try {
+    const response = await fetch('/.netlify/functions/send-winner-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(notification),
+    });
+
+    if (response.ok) {
+      console.log('Winner notification email sent successfully');
+      return true;
+    } else {
+      console.error('Failed to send winner notification email:', response.statusText);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error sending winner notification email:', error);
+    
+    // Fallback: Open mailto link
+    const quarterName = notification.quarter === 4 ? 'Final Score' : `Quarter ${notification.quarter}`;
+    const subject = encodeURIComponent(`🎉 You won ${quarterName} in ${notification.gameTitle}!`);
+    const body = encodeURIComponent(`Congratulations ${notification.winnerName}!
+
+You won ${quarterName} in the Football Squares game: "${notification.gameTitle}"
+
+Winning Score: ${notification.team1} ${notification.team1Score} - ${notification.team2} ${notification.team2Score}
+Your Prize: $${notification.prizeAmount.toFixed(2)}
+
+The winning square was determined by the last digits of the scores:
+${notification.team1}: ${notification.team1Score} (last digit: ${notification.team1Score % 10})
+${notification.team2}: ${notification.team2Score} (last digit: ${notification.team2Score % 10})
+
+Congratulations on your win! 🏆
+
+This message was sent from Football Squares Game.`);
+
+    const mailtoUrl = `mailto:${notification.winnerEmail}?subject=${subject}&body=${body}`;
+    window.open(mailtoUrl, '_blank');
+    
+    return true; // Return true since we opened the mailto link
+  }
 };

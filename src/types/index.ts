@@ -31,8 +31,14 @@ export interface Game {
   colNumbers: number[];
   isActive: boolean;
   isCompleted: boolean;
+  isLocked: boolean; // New: Whether square selection is closed
   createdAt: Date;
-  prizePerQuarter: number; // Prize amount for each quarter winner (total pool / 4)
+  prizeDistribution: {
+    quarter1: number;
+    quarter2: number;
+    quarter3: number;
+    quarter4: number;
+  }; // Custom prize amounts for each quarter
   totalPrizePool: number; // Total prize pool ($100 for full 100 square grid)
   maxSquaresPerUser: number; // Maximum squares a user can select
   currentQuarter: number;
