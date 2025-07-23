@@ -99,32 +99,39 @@ export const updateGameScores = async (
     // Calculate prize per quarter ($100 total / 4 quarters = $25 per quarter)
     const prizeAmount = game.totalPrizePool / 4;
     
-    // Create quarter winner record
+    // Create quarter winner record - ensure no undefined values
     const quarterWinner = {
       quarter,
       team1Score,
       team2Score,
-      winningSquareId: winningSquare?.id,
+      winningSquareId: winningSquare?.id || null,
       winnerName: winningSquare?.userName || 'No Winner (Square not sold)',
-      winnerEmail: winningSquare?.userId ? await getUserEmailFromSquare(winningSquare.userId) : undefined,
+      winnerEmail: winningSquare?.userId ? await getUserEmailFromSquare(winningSquare.userId) : null,
       prizeAmount: winningSquare ? prizeAmount : 0
     };
 
-    // Update quarter winners array
+    // Update quarter winners array - filter out any existing entry for this quarter
+    const existingWinners = game.quarterWinners || [];
     const updatedQuarterWinners = [
-      ...game.quarterWinners?.filter(w => w.quarter !== quarter) || [],
+      ...existingWinners.filter(w => w.quarter !== quarter),
       quarterWinner
     ];
     
+    // Create new score entry - ensure no undefined values
     const newScore = { 
       team1: team1Score, 
       team2: team2Score, 
       quarter,
-      winningSquare: winningSquare ? winningSquare.id : undefined,
-      winner: winningSquare?.userName || undefined
+      winningSquare: winningSquare?.id || null,
+      winner: winningSquare?.userName || null
     };
     
-    const updatedScores = [...game.scores.filter(s => s.quarter !== quarter), newScore];
+    // Update scores array - filter out any existing entry for this quarter
+    const existingScores = game.scores || [];
+    const updatedScores = [
+      ...existingScores.filter(s => s.quarter !== quarter), 
+      newScore
+    ];
     
     // Determine if game is completed (final score entered)
     const isCompleted = quarter === 4; // Final score
