@@ -139,26 +139,98 @@ const Login: React.FC = () => {
 
   if (loginType === null) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="bg-gray-900 p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
-          <h1 className="text-3xl font-bold text-white text-center mb-8">
-            🏈 Football Squares
-          </h1>
-          
-          <div className="space-y-4">
-            <button
-              onClick={() => setLoginType('host')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-            >
-              Host Login
-            </button>
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 flex items-center justify-center">
+        <div className="max-w-4xl w-full mx-4 grid md:grid-cols-2 gap-8 items-center">
+          {/* Left side - Information */}
+          <div className="text-white space-y-6">
+            <div className="space-y-4">
+              <h1 className="text-5xl md:text-6xl font-bold text-center md:text-left">
+                🏆 <span className="bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">Super Squares</span>
+              </h1>
+              <p className="text-xl text-gray-300 text-center md:text-left">
+                The ultimate game experience for any sporting event
+              </p>
+            </div>
             
-            <button
-              onClick={() => setLoginType('player')}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors"
-            >
-              Player Login
-            </button>
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <div className="bg-blue-600 rounded-full p-2 mt-1">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Easy to Play</h3>
+                  <p className="text-gray-400">Simple grid-based game that anyone can enjoy</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <div className="bg-green-600 rounded-full p-2 mt-1">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Play with Friends</h3>
+                  <p className="text-gray-400">Invite friends and family to join your game</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3">
+                <div className="bg-purple-600 rounded-full p-2 mt-1">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Real-time Updates</h3>
+                  <p className="text-gray-400">Live score tracking and instant notifications</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Right side - Login Options */}
+          <div className="bg-gray-900/50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-gray-700">
+            <h2 className="text-2xl font-bold text-white text-center mb-6">
+              Get Started
+            </h2>
+            
+            <div className="space-y-4">
+              <button
+                onClick={() => setLoginType('host')}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z"/>
+                  </svg>
+                  <span>Host a Game</span>
+                </div>
+                <p className="text-sm text-blue-100 mt-1">Create and manage your own game</p>
+              </button>
+              
+              <button
+                onClick={() => setLoginType('player')}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>Join a Game</span>
+                </div>
+                <p className="text-sm text-green-100 mt-1">Enter your code to join an existing game</p>
+              </button>
+            </div>
+            
+            <div className="mt-6 pt-6 border-t border-gray-700">
+              <p className="text-center text-gray-400 text-sm">
+                New to Super Squares? <br/>
+                <span className="text-blue-400">Start by hosting a game or ask for an invite code!</span>
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -167,11 +239,16 @@ const Login: React.FC = () => {
 
   if (loginType === 'host') {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="bg-gray-900 p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
-          <h2 className="text-2xl font-bold text-white text-center mb-6">
-            {isHostSignUp ? 'Create Host Account' : 'Host Login'}
-          </h2>
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 flex items-center justify-center">
+        <div className="bg-gray-900/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-gray-700">
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-bold text-white mb-2">
+              {isHostSignUp ? '🎯 Create Host Account' : '🏆 Host Login'}
+            </h2>
+            <p className="text-gray-400">
+              {isHostSignUp ? 'Start hosting your own Super Squares games' : 'Welcome back, game host!'}
+            </p>
+          </div>
           
           {error && (
             <div className="bg-red-600 text-white p-3 rounded mb-4">
@@ -265,11 +342,16 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="bg-gray-900 p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold text-white text-center mb-6">
-          Player Login
-        </h2>
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 flex items-center justify-center">
+      <div className="bg-gray-900/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-gray-700">
+        <div className="text-center mb-6">
+          <h2 className="text-3xl font-bold text-white mb-2">
+            🎮 Player Login
+          </h2>
+          <p className="text-gray-400">
+            Ready to join the action? Enter your details below!
+          </p>
+        </div>
         
         {error && (
           <div className="bg-red-600 text-white p-3 rounded mb-4">

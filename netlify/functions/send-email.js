@@ -41,16 +41,16 @@ exports.handler = async (event, context) => {
     });
 
     const mailOptions = {
-      from: `"Football Squares Game" <${process.env.GMAIL_USER}>`,
+      from: `"Super Squares Game" <${process.env.GMAIL_USER}>`,
       to: playerEmail,
-      subject: `You're invited to join ${gameTitle} - Football Squares`,
+      subject: `You're invited to join ${gameTitle} - Super Squares`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1f2937;">🏈 Football Squares Invitation</h2>
+          <h2 style="color: #1f2937;">� Super Squares Invitation</h2>
           
           <p>Hi <strong>${playerName}</strong>,</p>
           
-          <p><strong>${hostName}</strong> has invited you to join their Football Squares game: "<strong>${gameTitle}</strong>"</p>
+          <p><strong>${hostName}</strong> has invited you to join their Super Squares game: "<strong>${gameTitle}</strong>"</p>
           
           <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="margin-top: 0; color: #374151;">Your Join Code:</h3>
@@ -87,7 +87,7 @@ exports.handler = async (event, context) => {
           
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
           <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            This message was sent from Football Squares Game.<br>
+            This message was sent from Super Squares Game.<br>
             Game hosted by ${hostName}
           </p>
         </div>
@@ -95,7 +95,7 @@ exports.handler = async (event, context) => {
       text: `
 Hi ${playerName},
 
-${hostName} has invited you to join their Football Squares game: "${gameTitle}"
+${hostName} has invited you to join their Super Squares game: "${gameTitle}"
 
 Your join code is: ${joinCode}
 
@@ -116,7 +116,7 @@ Prize Information:
 
 Good luck!
 
-This message was sent from Football Squares Game.
+This message was sent from Super Squares Game.
 Game hosted by ${hostName}
       `
     };

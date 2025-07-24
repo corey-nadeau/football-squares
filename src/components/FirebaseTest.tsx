@@ -83,7 +83,7 @@ const FirebaseTest: React.FC = () => {
           <h3 className="font-bold mb-2">If you see authentication errors:</h3>
           <ol className="list-decimal list-inside space-y-1 text-sm">
             <li>Go to <a href="https://console.firebase.google.com/" className="text-blue-400 underline">Firebase Console</a></li>
-            <li>Select your project: football-squares-3694e</li>
+            <li>Select your project (or create a new one for Super Squares)</li>
             <li>Go to Authentication → Sign-in method</li>
             <li>Enable "Anonymous" authentication</li>
             <li>Go to Firestore Database → Rules</li>

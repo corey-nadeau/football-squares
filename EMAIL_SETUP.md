@@ -12,7 +12,7 @@ To enable email invitations for players using Gmail App Password (No limits, com
 1. Still in "Security" settings, scroll down to "2-Step Verification"
 2. At the bottom, click on "App passwords"
 3. Select "Mail" as the app and "Other (Custom name)" as the device
-4. Enter "Football Squares Game" as the custom name
+4. 4. Enter "Super Squares Game" as the custom name
 5. Click "Generate"
 6. **Copy the 16-character password** (it will look like: abcd efgh ijkl mnop)
 

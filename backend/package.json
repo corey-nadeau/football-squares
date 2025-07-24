@@ -1,7 +1,7 @@
 {
-  "name": "football-squares-email-backend",
+    "name": "super-squares-email-backend",
   "version": "1.0.0",
-  "description": "Simple backend for sending Football Squares email invitations",
+    "description": "Simple backend for sending Super Squares email invitations",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

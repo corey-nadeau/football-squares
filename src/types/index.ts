@@ -1,4 +1,4 @@
-// Types for the Football Squares game
+// Types for the Super Squares game
 
 export interface User {
   id: string;

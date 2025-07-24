@@ -1,4 +1,4 @@
-// Email service for Football Squares invitations
+// Email service for Super Squares invitations
 // Uses Netlify Functions for serverless email sending
 
 interface EmailInvitation {
@@ -46,10 +46,10 @@ export const sendPlayerInvitation = async (invitation: EmailInvitation): Promise
     console.error('Error sending email:', error);
     
     // Fallback: Open mailto link
-    const subject = encodeURIComponent(`You're invited to join ${invitation.gameTitle} - Football Squares`);
+    const subject = encodeURIComponent(`You're invited to join ${invitation.gameTitle} - Super Squares`);
     const body = encodeURIComponent(`Hi ${invitation.playerName},
 
-${invitation.hostName} has invited you to join their Football Squares game: "${invitation.gameTitle}"
+${invitation.hostName} has invited you to join their Super Squares game: "${invitation.gameTitle}"
 
 Your join code is: ${invitation.joinCode}
 
@@ -70,7 +70,7 @@ Prize Information:
 
 Good luck!
 
-This message was sent from Football Squares Game.
+This message was sent from Super Squares Game.
 Game hosted by ${invitation.hostName}`);
 
     const mailtoUrl = `mailto:${invitation.playerEmail}?subject=${subject}&body=${body}`;
@@ -116,7 +116,7 @@ export const sendWinnerNotification = async (notification: WinnerNotification): 
     const subject = encodeURIComponent(`🎉 You won ${quarterName} in ${notification.gameTitle}!`);
     const body = encodeURIComponent(`Congratulations ${notification.winnerName}!
 
-You won ${quarterName} in the Football Squares game: "${notification.gameTitle}"
+You won ${quarterName} in the Super Squares game: "${notification.gameTitle}"
 
 Winning Score: ${notification.team1} ${notification.team1Score} - ${notification.team2} ${notification.team2Score}
 Your Prize: $${notification.prizeAmount.toFixed(2)}
@@ -127,7 +127,7 @@ ${notification.team2}: ${notification.team2Score} (last digit: ${notification.te
 
 Congratulations on your win! 🏆
 
-This message was sent from Football Squares Game.`);
+This message was sent from Super Squares Game.`);
 
     const mailtoUrl = `mailto:${notification.winnerEmail}?subject=${subject}&body=${body}`;
     window.open(mailtoUrl, '_blank');

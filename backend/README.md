@@ -1,4 +1,4 @@
-# Football Squares Email Backend
+# Super Squares Email Backend
 
 Simple Express.js backend for sending email invitations via Gmail SMTP.
 

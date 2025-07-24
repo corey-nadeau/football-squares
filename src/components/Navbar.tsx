@@ -16,8 +16,8 @@ function Navbar() {
     <div className="bg-gray-900 text-white p-4 shadow-lg">
       <div className="max-w-6xl mx-auto flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <span className="text-2xl">🏈</span>
-          <h1 className="text-2xl font-bold">Football Squares</h1>
+          <span className="text-2xl">�</span>
+          <h1 className="text-2xl font-bold">Super Squares</h1>
         </div>
         
         <div className="flex items-center space-x-4">

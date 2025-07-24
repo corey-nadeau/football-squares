@@ -73,14 +73,14 @@ exports.handler = async (event, context) => {
           <div style="text-align: center; margin-top: 30px;">
             <p style="color: #9ca3af; font-size: 12px;">
               Congratulations on your win! 🎊<br>
-              This message was sent from Football Squares Game
+              This message was sent from Super Squares Game
             </p>
           </div>
         </div>
       `,
       text: `Congratulations ${winnerName}!
 
-You won ${quarterName} in the Football Squares game: "${gameTitle}"
+You won ${quarterName} in the Super Squares game: "${gameTitle}"
 
 Winning Score: ${team1} ${team1Score} - ${team2} ${team2Score}
 Your Prize: $${prizeAmount.toFixed(2)}
@@ -91,7 +91,7 @@ ${team2}: ${team2Score} (last digit: ${team2Score % 10})
 
 Congratulations on your win! 🏆
 
-This message was sent from Football Squares Game.`
+This message was sent from Super Squares Game.`
     };
 
     await transporter.sendMail(mailOptions);
