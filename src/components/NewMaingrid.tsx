@@ -147,11 +147,11 @@ function Maingrid() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-11 gap-1 p-4 mx-4 md:mx-20 lg:mx-40 text-xs">
+      <div className="grid grid-cols-11 gap-0.5 sm:gap-1 p-2 sm:p-4 mx-2 sm:mx-4 md:mx-20 lg:mx-40 text-xs">
         {/* Top row headers */}
-        <div className="text-xl text-center">🏈</div>
+        <div className="text-lg sm:text-xl text-center">🏈</div>
         {game.colNumbers.map((num, index) => (
-          <div key={`col-${index}`} className="border border-white h-8 w-8 md:w-12 md:h-12 flex items-center justify-center font-bold shadow-md shadow-green-500 text-base">
+          <div key={`col-${index}`} className="border border-white h-6 w-6 sm:h-8 sm:w-8 md:w-12 md:h-12 flex items-center justify-center font-bold shadow-md shadow-green-500 text-xs sm:text-base">
             {num}
           </div>
         ))}
@@ -160,7 +160,7 @@ function Maingrid() {
         {Array.from({ length: 10 }, (_, rowIndex) => (
           <React.Fragment key={`row-${rowIndex}`}>
             {/* Row header */}
-            <div className="border border-white h-8 w-8 md:w-12 md:h-12 flex items-center justify-center font-bold shadow-md shadow-green-500 text-base">
+            <div className="border border-white h-6 w-6 sm:h-8 sm:w-8 md:w-12 md:h-12 flex items-center justify-center font-bold shadow-md shadow-green-500 text-xs sm:text-base">
               {game.rowNumbers[rowIndex]}
             </div>
             
@@ -175,7 +175,7 @@ function Maingrid() {
                   key={squareId}
                   onClick={() => isClickable && handleSquareClick(squareId)}
                   className={`
-                    border border-white h-8 w-8 md:w-12 md:h-12 flex items-center justify-center font-bold text-xs
+                    border border-white h-6 w-6 sm:h-8 sm:w-8 md:w-12 md:h-12 flex items-center justify-center font-bold text-[10px] sm:text-xs
                     shadow-md ${square ? getSquareColor(square) : 'shadow-white'}
                     ${isClickable ? 'cursor-pointer hover:bg-gray-700' : ''}
                     ${selectedSquares.includes(squareId) ? 'bg-yellow-900' : ''}

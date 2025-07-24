@@ -848,28 +848,28 @@ const HostDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-3xl font-bold">{currentGame?.title || 'Host Dashboard'}</h1>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 space-y-4 sm:space-y-0">
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <h1 className="text-2xl sm:text-3xl font-bold">{currentGame?.title || 'Host Dashboard'}</h1>
             {allHostGames.length > 1 && (
               <button
                 onClick={() => setShowGameManager(true)}
-                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm"
+                className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm w-fit"
               >
                 Manage Games ({allHostGames.length})
               </button>
             )}
           </div>
-          <div className="flex space-x-2">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
             <button
               onClick={() => setShowCreateGame(true)}
-              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
+              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-medium"
             >
               Create New Game
             </button>
             <button
               onClick={logout}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-medium"
             >
               Logout
             </button>
@@ -1292,19 +1292,19 @@ const HostDashboard: React.FC = () => {
 
         {/* Master Grid */}
         {currentGame && (
-          <div className="mt-8 bg-gray-900 p-6 rounded-lg">
-            <h2 className="text-xl font-bold mb-4">Master Grid - All Player Selections</h2>
+          <div className="mt-8 bg-gray-900 p-4 sm:p-6 rounded-lg">
+            <h2 className="text-lg sm:text-xl font-bold mb-4">Master Grid - All Player Selections</h2>
             <div className="overflow-x-auto">
               <div className="inline-block min-w-full">
                 {/* Column headers (Team 2) */}
-                <div className="flex mb-2">
-                  <div className="w-8 h-8"></div> {/* Empty corner */}
-                  <div className="text-center font-bold text-sm mb-1 flex-1">{currentGame.team2}</div>
+                <div className="flex mb-1">
+                  <div className="w-6 sm:w-8 h-6 sm:h-8"></div> {/* Empty corner */}
+                  <div className="text-center font-bold text-xs sm:text-sm mb-1 flex-1">{currentGame.team2}</div>
                 </div>
-                <div className="flex mb-2">
-                  <div className="w-8 h-8"></div> {/* Empty corner */}
+                <div className="flex mb-1">
+                  <div className="w-6 sm:w-8 h-6 sm:h-8"></div> {/* Empty corner */}
                   {currentGame.colNumbers.map((num, index) => (
-                    <div key={index} className="w-12 h-8 border border-gray-600 bg-blue-800 text-white text-xs flex items-center justify-center font-bold">
+                    <div key={index} className="w-8 sm:w-12 h-6 sm:h-8 border border-gray-600 bg-blue-800 text-white text-xs flex items-center justify-center font-bold">
                       {num}
                     </div>
                   ))}
@@ -1315,12 +1315,12 @@ const HostDashboard: React.FC = () => {
                   <div key={rowIndex} className="flex">
                     {/* Row header (Team 1) */}
                     {rowIndex === 0 && (
-                      <div className="w-8 flex items-center justify-center text-xs font-bold text-center transform -rotate-90 mb-2">
+                      <div className="w-6 sm:w-8 flex items-center justify-center text-xs font-bold text-center transform -rotate-90 mb-1">
                         {currentGame.team1}
                       </div>
                     )}
-                    {rowIndex !== 0 && <div className="w-8"></div>}
-                    <div className="w-12 h-12 border border-gray-600 bg-red-800 text-white text-xs flex items-center justify-center font-bold">
+                    {rowIndex !== 0 && <div className="w-6 sm:w-8"></div>}
+                    <div className="w-8 sm:w-12 h-8 sm:h-12 border border-gray-600 bg-red-800 text-white text-xs flex items-center justify-center font-bold">
                       {currentGame.rowNumbers[rowIndex]}
                     </div>
                     
@@ -1330,7 +1330,7 @@ const HostDashboard: React.FC = () => {
                       return (
                         <div
                           key={`${rowIndex}-${colIndex}`}
-                          className={`w-12 h-12 border border-gray-600 text-xs flex items-center justify-center ${
+                          className={`w-8 sm:w-12 h-8 sm:h-12 border border-gray-600 text-xs flex items-center justify-center ${
                             square?.claimed 
                               ? 'bg-green-800 text-green-100' 
                               : 'bg-gray-700 text-gray-400'
@@ -1339,7 +1339,7 @@ const HostDashboard: React.FC = () => {
                         >
                           <div className="text-center">
                             {square?.claimed && (
-                              <div className="font-bold text-[10px] leading-none">
+                              <div className="font-bold text-[8px] sm:text-[10px] leading-none">
                                 {square.userInitials || square.userName?.substring(0, 2).toUpperCase()}
                               </div>
                             )}
@@ -1351,7 +1351,7 @@ const HostDashboard: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className="mt-4 text-sm text-gray-400">
+            <div className="mt-4 text-xs sm:text-sm text-gray-400">
               <p>• Green squares are claimed by players</p>
               <p>• Gray squares are still available</p>
               <p>• Hover over squares to see player names</p>
