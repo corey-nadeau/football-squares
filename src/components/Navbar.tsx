@@ -1,8 +1,7 @@
-
 import { useAuth } from '../contexts/AuthContext';
 
 function Navbar() {
-  const { logout, userType, playerName } = useAuth();
+  const { logout, userType, playerName, hostName } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -19,15 +18,13 @@ function Navbar() {
           <span className="text-2xl">🏆</span>
           <h1 className="text-2xl font-bold">Super Squares</h1>
         </div>
-        <div className="flex items-center space-x-3">
-          <span className="text-2xl">�</span>
-          <h1 className="text-2xl font-bold">Super Squares</h1>
-        </div>
         
         <div className="flex items-center space-x-4">
-          {playerName && (
+          {(playerName || hostName) && (
             <span className="text-lg">
-              Welcome, <span className="font-bold text-blue-400">{playerName}</span>
+              <span className="font-bold text-blue-400">
+                {userType === 'player' ? playerName : hostName}
+              </span>
             </span>
           )}
           {userType && (

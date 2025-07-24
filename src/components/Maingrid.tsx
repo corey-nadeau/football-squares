@@ -64,11 +64,23 @@ function Maingrid() {
       
       const updatedSquares = game.squares.map(square => {
         if (selectedSquares.includes(square.id)) {
+          // Generate proper 2-character initials
+          const generateInitials = (name: string) => {
+            const nameParts = name.trim().split(' ');
+            if (nameParts.length >= 2) {
+              // Two or more names: use first letter of first two parts
+              return (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+            } else {
+              // Single name: use first two letters
+              return name.substring(0, 2).toUpperCase();
+            }
+          };
+
           return {
             ...square,
             claimed: true,
             userName: playerName,
-            userInitials: playerName.split(' ').map(n => n[0]).join('').toUpperCase(),
+            userInitials: generateInitials(playerName),
             userId: playerName, // Using name as ID since we don't have user IDs
           };
         }

@@ -6,15 +6,12 @@ import {
   getGameUserCodes, 
   subscribeToGame,
   updateGameScores,
-  updateUserCode,
   deleteUserCode,
   getGamesByHost,
   deleteGame,
   getAllHostGames,
   setGameActive,
-  lockGameSelections,
-  randomizeGameNumbers,
-  completeGame
+  lockGameSelections
 } from '../services/gameService';
 import { fetchUpcomingGames, fetchLiveScores, NFLGame } from '../services/nflApiService';
 import { Game, GameSquare, UserCode } from '../types';
@@ -55,13 +52,6 @@ const HostDashboard: React.FC = () => {
   const [currentQuarter, setCurrentQuarter] = useState(1);
   const [quarterResults, setQuarterResults] = useState<any[]>([]);
   
-  // Player management
-  const [selectedPlayer, setSelectedPlayer] = useState<UserCode | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editPlayerName, setEditPlayerName] = useState('');
-  const [editPlayerEmail, setEditPlayerEmail] = useState('');
-  const [editSquaresAllowed, setEditSquaresAllowed] = useState(5);
-
   // Winner popup
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [winnerData, setWinnerData] = useState<any>(null);
@@ -196,6 +186,13 @@ const HostDashboard: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [currentGame?.nflGameId]);
+
+  // Auto-uncheck email invitation when email field is cleared
+  useEffect(() => {
+    if (!playerEmail.trim() && sendEmailInvite) {
+      setSendEmailInvite(false);
+    }
+  }, [playerEmail, sendEmailInvite]);
 
   const resetCreateGameForm = () => {
     setGameTitle('');
@@ -343,15 +340,17 @@ const HostDashboard: React.FC = () => {
     if (!currentGame) return;
     
     try {
+      setLoading(true);
+      
       const code = await generateUserCode(
         currentGame.id, 
         squaresToAssign, 
-        playerName || undefined,
-        playerEmail || undefined,
-        sendEmailInvite && playerEmail.length > 0
+        playerName.trim() || undefined,
+        playerEmail.trim() || undefined,
+        sendEmailInvite && playerEmail.trim().length > 0
       );
       
-      if (sendEmailInvite && playerEmail) {
+      if (sendEmailInvite && playerEmail.trim()) {
         alert(`New user code generated: ${code} (${squaresToAssign} squares for ${playerName || 'Player'})\nEmail invitation sent to ${playerEmail}`);
       } else {
         alert(`New user code generated: ${code} (${squaresToAssign} squares for ${playerName || 'Player'})`);
@@ -365,6 +364,9 @@ const HostDashboard: React.FC = () => {
       setSendEmailInvite(false);
     } catch (error) {
       console.error('Error generating code:', error);
+      alert('Failed to generate user code. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -400,57 +402,6 @@ const HostDashboard: React.FC = () => {
     }
   };
 
-  const handleEditPlayer = (player: UserCode) => {
-    setSelectedPlayer(player);
-    setEditPlayerName(player.playerName || '');
-    setEditPlayerEmail(player.playerEmail || '');
-    setEditSquaresAllowed(player.squaresAllowed);
-    setShowEditModal(true);
-  };
-
-  const handleUpdatePlayer = async () => {
-    if (!selectedPlayer) return;
-    
-    try {
-      await updateUserCode(selectedPlayer.id, {
-        playerName: editPlayerName || undefined,
-        playerEmail: editPlayerEmail || undefined,
-        squaresAllowed: editSquaresAllowed,
-      });
-      
-      alert('Player updated successfully!');
-      setShowEditModal(false);
-      setSelectedPlayer(null);
-      
-      // Refresh user codes
-      if (currentGame) {
-        loadUserCodes(currentGame.id);
-      }
-    } catch (error) {
-      console.error('Error updating player:', error);
-      alert('Failed to update player');
-    }
-  };
-
-  const handleDeletePlayer = async (player: UserCode) => {
-    if (!confirm(`Are you sure you want to remove ${player.playerName || player.code}?`)) {
-      return;
-    }
-    
-    try {
-      await deleteUserCode(player.id);
-      alert('Player removed successfully!');
-      
-      // Refresh user codes
-      if (currentGame) {
-        loadUserCodes(currentGame.id);
-      }
-    } catch (error) {
-      console.error('Error deleting player:', error);
-      alert('Failed to remove player');
-    }
-  };
-
   const handleLockSelections = async () => {
     if (!currentGame) return;
     
@@ -467,43 +418,6 @@ const HostDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error locking game selections:', error);
       alert('Failed to lock selections. Please try again.');
-    }
-  };
-
-  const handleRandomizeNumbers = async () => {
-    if (!currentGame) return;
-    
-    const confirmMessage = `Randomize the grid numbers? This will:\n\n• Shuffle the row and column numbers (0-9)\n• Change which squares win for each score combination\n• This is typically done after all squares are sold\n\nContinue?`;
-    
-    if (!confirm(confirmMessage)) {
-      return;
-    }
-    
-    try {
-      await randomizeGameNumbers(currentGame.id);
-      alert('Grid numbers have been randomized!');
-    } catch (error) {
-      console.error('Error randomizing numbers:', error);
-      alert('Failed to randomize numbers. Please try again.');
-    }
-  };
-
-  const handleCompleteGame = async () => {
-    if (!currentGame) return;
-    
-    const confirmMessage = `Complete and archive this game?\n\nThis will:\n• Mark the game as finished\n• Deactivate the game\n• Move it to completed games archive\n\nThis action cannot be undone. Continue?`;
-    
-    if (confirm(confirmMessage)) {
-      try {
-        await completeGame(currentGame.id);
-        alert('Game completed successfully!');
-        
-        // Reload games to refresh the list
-        await loadAllHostGames();
-      } catch (error) {
-        console.error('Error completing game:', error);
-        alert('Failed to complete game. Please try again.');
-      }
     }
   };
 
@@ -852,7 +766,12 @@ const HostDashboard: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
           <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <h1 className="text-xl sm:text-2xl font-bold">{currentGame?.title || 'Host Dashboard'}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{currentGame ? `${currentGame.team1} vs ${currentGame.team2}` : 'Host Dashboard'}</h1>
+            {currentGame && (
+              <span className="text-sm text-gray-400">
+                {currentGame.title}
+              </span>
+            )}
             {allHostGames.length > 1 && (
               <button
                 onClick={() => setShowGameManager(true)}
@@ -864,16 +783,10 @@ const HostDashboard: React.FC = () => {
           </div>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
             <button
-              onClick={() => setShowCreateGame(true)}
+              onClick={() => setShowGameManager(true)}
               className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-medium"
             >
-              Create New Game
-            </button>
-            <button
-              onClick={logout}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-medium"
-            >
-              Logout
+              Game Manager
             </button>
           </div>
         </div>
@@ -881,29 +794,47 @@ const HostDashboard: React.FC = () => {
         {/* Tab Navigation */}
         {currentGame && (
           <div className="mb-6">
-            <div className="border-b border-gray-700">
-              <nav className="flex space-x-8 overflow-x-auto">
-                {[
-                  { id: 'overview', label: 'Overview', icon: '📊' },
-                  { id: 'players', label: 'Players', icon: '👥' },
-                  { id: 'grid', label: 'Grid', icon: '⬜' },
-                  { id: 'scores', label: 'Scores', icon: '🏆' },
-                  { id: 'settings', label: 'Settings', icon: '⚙️' }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
-                      activeTab === tab.id
-                        ? 'border-blue-500 text-blue-400'
-                        : 'border-transparent text-gray-400 hover:text-gray-300'
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
+            {/* Mobile dropdown for small screens */}
+            <div className="md:hidden mb-4">
+              <select 
+                value={activeTab} 
+                onChange={(e) => setActiveTab(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white"
+              >
+                <option value="overview">📊 Overview</option>
+                <option value="players">👥 Players</option>
+                <option value="grid">⬜ Grid</option>
+                <option value="scores">🏆 Scores</option>
+                <option value="settings">⚙️ Settings</option>
+              </select>
+            </div>
+            
+            {/* Desktop tabs for larger screens */}
+            <div className="hidden md:block">
+              <div className="border-b border-gray-700">
+                <nav className="flex flex-wrap gap-1">
+                  {[
+                    { id: 'overview', label: 'Overview', icon: '📊' },
+                    { id: 'players', label: 'Players', icon: '👥' },
+                    { id: 'grid', label: 'Grid', icon: '⬜' },
+                    { id: 'scores', label: 'Scores', icon: '🏆' },
+                    { id: 'settings', label: 'Settings', icon: '⚙️' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center space-x-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors ${
+                        activeTab === tab.id
+                          ? 'border-blue-500 text-blue-400 bg-gray-800/50'
+                          : 'border-transparent text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
+                      }`}
+                    >
+                      <span className="text-lg">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
             </div>
           </div>
         )}
@@ -940,40 +871,286 @@ const HostDashboard: React.FC = () => {
                     </p>
                   </div>
                 </div>
-
-                {/* Quick Actions */}
-                <div className="bg-gray-900 p-4 rounded-lg">
-                  <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setActiveTab('players')}
-                      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm"
-                    >
-                      Manage Players
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('scores')}
-                      className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm"
-                    >
-                      Update Scores
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('grid')}
-                      className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm"
-                    >
-                      View Grid
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
 
             {/* Players Tab */}
             {activeTab === 'players' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* User Codes Section */}
+                  <div className="bg-gray-900 p-6 rounded-lg">
+                    <h2 className="text-xl font-bold mb-4">Generate User Code</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-bold mb-2">Player Name</label>
+                        <input
+                          type="text"
+                          value={playerName}
+                          onChange={(e) => setPlayerName(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                          placeholder="John Smith (optional)"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold mb-2">Player Email (Optional)</label>
+                        <input
+                          type="email"
+                          value={playerEmail}
+                          onChange={(e) => setPlayerEmail(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                          placeholder="john@example.com"
+                        />
+                        <div className="flex items-center mt-2">
+                          <input
+                            type="checkbox"
+                            id="sendEmail"
+                            checked={sendEmailInvite && playerEmail.trim().length > 0}
+                            onChange={(e) => setSendEmailInvite(e.target.checked)}
+                            disabled={!playerEmail.trim()}
+                            className="mr-2"
+                          />
+                          <label htmlFor="sendEmail" className={`text-sm ${!playerEmail.trim() ? 'text-gray-500' : ''}`}>
+                            Send email invitation with join code
+                          </label>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold mb-2">Squares Allowed</label>
+                        <input
+                          type="number"
+                          value={squaresToAssign}
+                          onChange={(e) => setSquaresToAssign(parseInt(e.target.value))}
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                          min="1"
+                          max="25"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleGenerateCode}
+                      disabled={loading}
+                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 px-4 py-2 rounded font-bold disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Generating...' : 'Generate User Code'}
+                    </button>
+                  </div>
+
+                  {/* Player List */}
+                  <div className="bg-gray-900 p-6 rounded-lg">
+                    <h2 className="text-xl font-bold mb-4">Current Players ({userCodes.length})</h2>
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {userCodes.map((userCode) => (
+                        <div key={userCode.id} className="bg-gray-800 p-3 rounded flex justify-between items-center">
+                          <div className="flex-1">
+                            <div className="font-bold">{userCode.playerName}</div>
+                            <div className="text-sm text-gray-400">{userCode.playerEmail || 'No email'}</div>
+                            <div className="text-xs text-gray-500">
+                              Code: {userCode.code} | Squares: {userCode.squaresAllowed}
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Are you sure you want to delete this player?')) {
+                                  deleteUserCode(userCode.id);
+                                  loadUserCodes(currentGame?.id || '');
+                                }
+                              }}
+                              className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Scores Tab */}
+            {activeTab === 'scores' && (
+              <div className="space-y-6">
+                <div className="bg-gray-900 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-4">Score Management</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-bold mb-2">{currentGame?.team1} Score</label>
+                      <input
+                        type="number"
+                        value={team1Score}
+                        onChange={(e) => setTeam1Score(parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold mb-2">{currentGame?.team2} Score</label>
+                      <input
+                        type="number"
+                        value={team2Score}
+                        onChange={(e) => setTeam2Score(parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold mb-2">Current Quarter</label>
+                      <select
+                        value={currentQuarter}
+                        onChange={(e) => setCurrentQuarter(parseInt(e.target.value))}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
+                      >
+                        <option value={1}>Quarter 1</option>
+                        <option value={2}>Quarter 2</option>
+                        <option value={3}>Quarter 3</option>
+                        <option value={4}>Quarter 4</option>
+                        <option value={5}>Final</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleUpdateScores}
+                    disabled={loading}
+                    className="mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 px-6 py-2 rounded font-bold"
+                  >
+                    {loading ? 'Updating...' : 'Update Scores'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Grid Tab */}
+            {activeTab === 'grid' && (
+              <div className="space-y-6">
+                <div className="bg-gray-900 p-4 sm:p-6 rounded-lg">
+                  <h3 className="text-lg sm:text-xl font-bold mb-4">Master Grid - All Player Selections</h3>
+                  
+                  {/* Team name labels */}
+                  <div className="mb-4 text-center">
+                    <div className="text-sm font-bold text-blue-400 mb-1">{currentGame?.team2} (Top Numbers)</div>
+                    <div className="text-sm font-bold text-red-400">vs {currentGame?.team1} (Side Numbers)</div>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <div className="inline-block min-w-full">
+                      {/* Column numbers row */}
+                      <div className="flex">
+                        <div className="w-8 sm:w-12 h-8 sm:h-12 flex items-center justify-center text-xs font-bold bg-gray-800 border border-gray-600">
+                          <span className="text-[10px] sm:text-xs">VS</span>
+                        </div>
+                        {currentGame?.colNumbers.map((num, index) => (
+                          <div key={index} className="w-8 sm:w-12 h-8 sm:h-12 border border-gray-600 bg-blue-800 text-white text-xs flex items-center justify-center font-bold">
+                            {num}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Grid rows */}
+                      {Array.from({ length: 10 }, (_, rowIndex) => (
+                        <div key={rowIndex} className="flex">
+                          {/* Row number */}
+                          <div className="w-8 sm:w-12 h-8 sm:h-12 border border-gray-600 bg-red-800 text-white text-xs flex items-center justify-center font-bold">
+                            {currentGame?.rowNumbers[rowIndex]}
+                          </div>
+                          
+                          {/* Grid squares */}
+                          {Array.from({ length: 10 }, (_, colIndex) => {
+                            const square = currentGame?.squares.find(s => s.row === rowIndex && s.col === colIndex);
+                            return (
+                              <div
+                                key={`${rowIndex}-${colIndex}`}
+                                className={`w-8 sm:w-12 h-8 sm:h-12 border border-gray-600 text-xs flex items-center justify-center ${
+                                  square?.claimed 
+                                    ? 'bg-green-800 text-green-100' 
+                                    : 'bg-gray-700 text-gray-400'
+                                }`}
+                                title={square?.claimed ? `${square.userName}` : 'Available'}
+                              >
+                                <div className="text-center">
+                                  {square?.claimed && (
+                                    <div className="font-bold text-[8px] sm:text-[10px] leading-none">
+                                      {(() => {
+                                        // Use existing userInitials if available
+                                        if (square.userInitials) {
+                                          return square.userInitials;
+                                        }
+                                        
+                                        // Generate initials from userName
+                                        if (square.userName) {
+                                          const nameParts = square.userName.trim().split(' ');
+                                          if (nameParts.length >= 2) {
+                                            // Two or more names: use first letter of first two parts
+                                            return (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+                                          } else {
+                                            // Single name: use first two letters
+                                            return square.userName.substring(0, 2).toUpperCase();
+                                          }
+                                        }
+                                        
+                                        return '';
+                                      })()}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-4 text-xs sm:text-sm text-gray-400">
+                    <p>• Green squares are claimed by players</p>
+                    <p>• Gray squares are still available</p>
+                    <p>• Hover over squares to see player names</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <div className="space-y-6">
+                <div className="bg-gray-900 p-6 rounded-lg">
+                  <h3 className="text-xl font-bold mb-4">Game Settings</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span>Game Active</span>
+                      <button
+                        onClick={() => handleToggleGameActive(currentGame?.id || '', currentGame?.isActive || false)}
+                        className={`px-4 py-2 rounded font-bold ${
+                          currentGame?.isActive 
+                            ? 'bg-red-600 hover:bg-red-700' 
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                      >
+                        {currentGame?.isActive ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Lock Selections</span>
+                      <button
+                        onClick={() => handleLockSelections()}
+                        disabled={currentGame?.isLocked}
+                        className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 px-4 py-2 rounded font-bold"
+                      >
+                        {currentGame?.isLocked ? 'Locked' : 'Lock Game'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {showGameManager && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-900 p-6 rounded-lg max-w-4xl w-full mx-4 max-h-96 overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-4">Manage Your Games</h2>
+            <div className="bg-gray-900 p-6 rounded-lg max-w-4xl w-full mx-4 max-h-[600px] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4">Game Manager</h2>
               
               <div className="space-y-3">
                 {allHostGames.map((game) => (
@@ -986,582 +1163,68 @@ const HostDashboard: React.FC = () => {
                           game.createdAt instanceof Date 
                             ? game.createdAt.toLocaleDateString()
                             : new Date((game.createdAt as any).seconds * 1000).toLocaleDateString()
-                        ) : 'Unknown'}
-                        {game.id === currentGame?.id && <span className=" text-green-400 ml-2">(Current)</span>}
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className={`px-2 py-1 rounded text-xs ${game.isActive ? 'bg-green-600' : 'bg-gray-600'}`}>
-                          {game.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {game.isCompleted ? 'Completed' : 'In Progress'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      {game.id !== currentGame?.id && (
-                        <button
-                          onClick={() => handleSwitchToGame(game.id)}
-                          className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-                        >
-                          Switch To
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleToggleGameActive(game.id, game.isActive)}
-                        className={`px-3 py-1 rounded text-sm ${
-                          game.isActive 
-                            ? 'bg-yellow-600 hover:bg-yellow-700' 
-                            : 'bg-green-600 hover:bg-green-700'
-                        }`}
-                      >
-                        {game.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteGame(game.id, game.title)}
-                        className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex justify-end space-x-2 mt-6">
-                <button
-                  onClick={() => setShowCreateGame(true)}
-                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
-                >
-                  Create New Game
-                </button>
-                <button
-                  onClick={() => setShowGameManager(false)}
-                  className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* User Codes Section */}
-          <div className="bg-gray-900 p-6 rounded-lg">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold mb-4">Generate User Code</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-bold mb-2">Player Name (Required)</label>
-                  <input
-                    type="text"
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
-                    placeholder="John Smith"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-bold mb-2">Player Email</label>
-                  <input
-                    type="email"
-                    value={playerEmail}
-                    onChange={(e) => setPlayerEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
-                    placeholder="john@example.com"
-                  />
-                  <div className="flex items-center mt-2">
-                    <input
-                      type="checkbox"
-                      id="sendEmail"
-                      checked={sendEmailInvite}
-                      onChange={(e) => setSendEmailInvite(e.target.checked)}
-                      className="mr-2"
-                    />
-                    <label htmlFor="sendEmail" className="text-sm">
-                      Send email invitation with join code
-                    </label>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-bold mb-2">Squares Allowed</label>
-                  <input
-                    type="number"
-                    value={squaresToAssign}
-                    onChange={(e) => setSquaresToAssign(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
-                    min="1"
-                    max="25"
-                  />
-                </div>
-                
-                <div className="flex items-end">
-                  <button
-                    onClick={handleGenerateCode}
-                    disabled={!playerName.trim()}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 px-4 py-2 rounded"
-                  >
-                    Generate Code
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-bold mb-3">Player Management</h3>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {userCodes.map((code) => (
-                  <div
-                    key={code.id}
-                    className={`p-4 rounded border ${
-                      code.isUsed ? 'bg-green-900 border-green-600' : 'bg-gray-800 border-gray-600'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="font-mono text-lg font-bold">{code.code}</span>
-                          <span className={`px-2 py-1 rounded text-xs ${code.isUsed ? 'bg-green-600 text-green-100' : 'bg-yellow-600 text-yellow-100'}`}>
-                            {code.isUsed ? 'Used' : 'Available'}
-                          </span>
+                            ) : 'Unknown'}
+                            {game.id === currentGame?.id && <span className=" text-green-400 ml-2">(Current)</span>}
+                          </p>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className={`px-2 py-1 rounded text-xs ${game.isActive ? 'bg-green-600' : 'bg-gray-600'}`}>
+                              {game.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {game.isCompleted ? 'Completed' : 'In Progress'}
+                            </span>
+                          </div>
                         </div>
-                        {code.playerName && (
-                          <div className="text-sm text-blue-400 font-semibold mb-1">
-                            Player: {code.playerName}
-                          </div>
-                        )}
-                        {code.playerEmail && (
-                          <div className="text-sm text-gray-400 mb-1">
-                            Email: {code.playerEmail}
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-400">
-                          {code.squaresAllowed} squares allowed
-                        </div>
-                        {code.assignedUserName && (
-                          <div className="text-sm text-gray-400 mt-1">
-                            Used by: {code.assignedUserName}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {!code.isUsed && (
-                        <div className="flex gap-2 ml-4">
+                        
+                        <div className="flex space-x-2">
+                          {game.id !== currentGame?.id && (
+                            <button
+                              onClick={() => handleSwitchToGame(game.id)}
+                              className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                            >
+                              Switch To
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleEditPlayer(code)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium"
+                            onClick={() => handleToggleGameActive(game.id, game.isActive)}
+                            className={`px-3 py-1 rounded text-sm ${
+                              game.isActive 
+                                ? 'bg-yellow-600 hover:bg-yellow-700' 
+                                : 'bg-green-600 hover:bg-green-700'
+                            }`}
                           >
-                            Edit
+                            {game.isActive ? 'Deactivate' : 'Activate'}
                           </button>
                           <button
-                            onClick={() => handleDeletePlayer(code)}
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium"
+                            onClick={() => handleDeleteGame(game.id, game.title)}
+                            className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm"
                           >
-                            Remove
+                            Delete
                           </button>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-                
-                {userCodes.length === 0 && (
-                  <div className="text-center text-gray-400 py-8">
-                    No players added yet. Generate codes above to invite players.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Score Management */}
-          <div className="bg-gray-900 p-6 rounded-lg">
-            <h2 className="text-xl font-bold mb-4">Score Management</h2>
-            
-            {/* Live Score Display for NFL Games */}
-            {currentGame?.nflGameId && (
-              <div className="mb-6 p-4 bg-blue-900/30 border border-blue-600 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold text-blue-300">🏈 Live NFL Scores</h3>
-                  <button
-                    onClick={fetchNFLScores}
-                    className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-                  >
-                    🔄 Refresh
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div className="bg-gray-800 p-3 rounded">
-                    <div className="text-lg font-bold">{currentGame.team1}</div>
-                    <div className="text-2xl font-bold text-green-400">{team1Score}</div>
-                  </div>
-                  <div className="bg-gray-800 p-3 rounded">
-                    <div className="text-lg font-bold">{currentGame.team2}</div>
-                    <div className="text-2xl font-bold text-green-400">{team2Score}</div>
-                  </div>
-                </div>
-                <div className="text-center mt-2 text-sm text-gray-400">
-                  Quarter {currentQuarter} • Auto-updates every 30 seconds
-                </div>
-              </div>
-            )}
-            
-            <div className="space-y-4">{currentGame?.nflGameId && (
-                <div className="mb-4">
-                  <h4 className="text-md font-bold mb-2 text-gray-300">Manual Score Override</h4>
-                  <p className="text-sm text-gray-400 mb-3">
-                    Use these fields to manually adjust scores if needed
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold mb-2">{currentGame?.team1}</label>
-                  <input
-                    type="number"
-                    value={team1Score}
-                    onChange={(e) => setTeam1Score(parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
-                    min="0"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-bold mb-2">{currentGame?.team2}</label>
-                  <input
-                    type="number"
-                    value={team2Score}
-                    onChange={(e) => setTeam2Score(parseInt(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
-                    min="0"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold mb-2">Quarter/Period</label>
-                <select
-                  value={currentQuarter}
-                  onChange={(e) => setCurrentQuarter(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded"
-                >
-                  <option value={1}>1st Quarter</option>
-                  <option value={2}>2nd Quarter</option>
-                  <option value={3}>3rd Quarter</option>
-                  <option value={4}>Final Score (includes OT)</option>
-                </select>
-                <p className="text-xs text-yellow-400 mt-2">
-                  Note: There is no separate 4th quarter score. The final score includes overtime if applicable.
-                </p>
-              </div>
-              
-              <div className="bg-blue-900 p-4 rounded border border-blue-600">
-                <h3 className="font-bold text-blue-300 mb-2">Prize Structure</h3>
-                <ul className="text-sm text-blue-200 space-y-1">
-                  <li>• Q1 Winner: ${currentGame?.prizeDistribution?.quarter1 || 25}</li>
-                  <li>• Q2 Winner: ${currentGame?.prizeDistribution?.quarter2 || 25}</li>
-                  <li>• Q3 Winner: ${currentGame?.prizeDistribution?.quarter3 || 25}</li>
-                  <li>• Final Score Winner: ${currentGame?.prizeDistribution?.quarter4 || 25}</li>
-                  <li>• Total Pool: $100</li>
-                </ul>
-                <p className="text-xs text-yellow-300 mt-2">
-                  Same grid used for all quarters
-                </p>
-              </div>
-              
-              {/* Game Lock Control */}
-              <div className="bg-yellow-900 p-4 rounded border border-yellow-600">
-                <h3 className="font-bold text-yellow-300 mb-2">Game Control</h3>
-                {!currentGame?.isLocked ? (
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-yellow-200 mb-2">
-                        Players can still select squares. Lock selections when ready to start the game.
-                      </p>
-                      <button
-                        onClick={handleLockSelections}
-                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-yellow-100 py-2 rounded font-bold"
-                      >
-                        🔒 Lock Square Selections
-                      </button>
-                    </div>
-                    <div>
-                      <p className="text-sm text-yellow-200 mb-2">
-                        Randomize grid numbers (typically done after all squares are sold):
-                      </p>
-                      <button
-                        onClick={handleRandomizeNumbers}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-blue-100 py-2 rounded font-bold"
-                      >
-                        🎲 Randomize Grid Numbers
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <p className="text-yellow-200 font-bold">🔒 Square Selections Locked</p>
-                    <p className="text-xs text-yellow-300 mt-1">Players can no longer change their selections</p>
+                  
+                  <div className="flex justify-end space-x-2 mt-6">
                     <button
-                      onClick={handleRandomizeNumbers}
-                      className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-blue-100 py-2 rounded font-bold"
+                      onClick={() => setShowCreateGame(true)}
+                      className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
                     >
-                      🎲 Randomize Grid Numbers
+                      Create New Game
+                    </button>
+                    <button
+                      onClick={() => setShowGameManager(false)}
+                      className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded"
+                    >
+                      Close
                     </button>
                   </div>
-                )}
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={handleUpdateScores}
-                  className="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded"
-                >
-                  Update Scores
-                </button>
-                
-                {currentGame?.nflGameId && (
-                  <button
-                    onClick={fetchNFLScores}
-                    className="bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded"
-                    title="Refresh live NFL scores"
-                  >
-                    🔄
-                  </button>
-                )}
-              </div>
-              
-              {/* Game Management Actions */}
-              <div className="mt-4 pt-4 border-t border-gray-600">
-                <button
-                  onClick={handleCompleteGame}
-                  className="w-full bg-red-600 hover:bg-red-700 py-3 rounded font-bold"
-                >
-                  🏁 End & Archive Game
-                </button>
-                <p className="text-xs text-gray-400 mt-1 text-center">
-                  Complete the game and move it to archive
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Game Stats */}
-        <div className="mt-8 bg-gray-900 p-6 rounded-lg">
-          <h2 className="text-xl font-bold mb-4">Game Statistics</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-blue-400">
-                {currentGame?.squares.filter(s => s.claimed).length || 0}
-              </div>
-              <div className="text-sm text-gray-400">Squares Claimed</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-400">
-                {100 - (currentGame?.squares.filter(s => s.claimed).length || 0)}
-              </div>
-              <div className="text-sm text-gray-400">Squares Available</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-yellow-400">
-                {userCodes.filter(c => c.isUsed).length}
-              </div>
-              <div className="text-sm text-gray-400">Active Players</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-purple-400">
-                {userCodes.filter(c => !c.isUsed).length}
-              </div>
-              <div className="text-sm text-gray-400">Unused Codes</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Master Grid */}
-        {currentGame && (
-          <div className="mt-8 bg-gray-900 p-4 sm:p-6 rounded-lg">
-            <h2 className="text-lg sm:text-xl font-bold mb-4">Master Grid - All Player Selections</h2>
-            <div className="overflow-x-auto">
-              <div className="inline-block min-w-full">
-                {/* Column headers (Team 2) */}
-                <div className="flex mb-1">
-                  <div className="w-6 sm:w-8 h-6 sm:h-8"></div> {/* Empty corner */}
-                  <div className="text-center font-bold text-xs sm:text-sm mb-1 flex-1">{currentGame.team2}</div>
-                </div>
-                <div className="flex mb-1">
-                  <div className="w-6 sm:w-8 h-6 sm:h-8"></div> {/* Empty corner */}
-                  {currentGame.colNumbers.map((num, index) => (
-                    <div key={index} className="w-8 sm:w-12 h-6 sm:h-8 border border-gray-600 bg-blue-800 text-white text-xs flex items-center justify-center font-bold">
-                      {num}
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Grid rows */}
-                {Array.from({ length: 10 }, (_, rowIndex) => (
-                  <div key={rowIndex} className="flex">
-                    {/* Row header (Team 1) */}
-                    {rowIndex === 0 && (
-                      <div className="w-6 sm:w-8 flex items-center justify-center text-xs font-bold text-center transform -rotate-90 mb-1">
-                        {currentGame.team1}
-                      </div>
-                    )}
-                    {rowIndex !== 0 && <div className="w-6 sm:w-8"></div>}
-                    <div className="w-8 sm:w-12 h-8 sm:h-12 border border-gray-600 bg-red-800 text-white text-xs flex items-center justify-center font-bold">
-                      {currentGame.rowNumbers[rowIndex]}
-                    </div>
-                    
-                    {/* Grid squares */}
-                    {Array.from({ length: 10 }, (_, colIndex) => {
-                      const square = currentGame.squares.find(s => s.row === rowIndex && s.col === colIndex);
-                      return (
-                        <div
-                          key={`${rowIndex}-${colIndex}`}
-                          className={`w-8 sm:w-12 h-8 sm:h-12 border border-gray-600 text-xs flex items-center justify-center ${
-                            square?.claimed 
-                              ? 'bg-green-800 text-green-100' 
-                              : 'bg-gray-700 text-gray-400'
-                          }`}
-                          title={square?.claimed ? `${square.userName}` : 'Available'}
-                        >
-                          <div className="text-center">
-                            {square?.claimed && (
-                              <div className="font-bold text-[8px] sm:text-[10px] leading-none">
-                                {square.userInitials || square.userName?.substring(0, 2).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-4 text-xs sm:text-sm text-gray-400">
-              <p>• Green squares are claimed by players</p>
-              <p>• Gray squares are still available</p>
-              <p>• Hover over squares to see player names</p>
             </div>
           </div>
         )}
 
-        {/* Quarter Winners */}
-        {currentGame?.quarterWinners && currentGame.quarterWinners.length > 0 && (
-          <div className="mt-8 bg-gray-900 p-6 rounded-lg">
-            <h2 className="text-xl font-bold mb-4">Quarter Winners</h2>
-            <div className="grid gap-4">
-              {currentGame.quarterWinners
-                .sort((a, b) => a.quarter - b.quarter)
-                .map((winner) => (
-                  <div 
-                    key={winner.quarter} 
-                    className="bg-green-900 border border-green-600 p-4 rounded-lg"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-green-300 text-lg">
-                          {winner.quarter === 4 ? 'Final Score' : `Quarter ${winner.quarter}`}
-                        </h3>
-                        <p className="text-green-200 text-sm">
-                          {currentGame.team1} {winner.team1Score} - {currentGame.team2} {winner.team2Score}
-                        </p>
-                        <p className="text-green-100 font-semibold mt-1">
-                          Winner: {winner.winnerName}
-                        </p>
-                        {winner.winnerEmail && (
-                          <p className="text-green-200 text-sm">
-                            Email: {winner.winnerEmail}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-green-300">
-                          ${winner.prizeAmount.toFixed(2)}
-                        </div>
-                        <div className="text-xs text-green-400">
-                          Prize Won
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-xs text-green-300">
-                      Winning numbers: {currentGame.team1} {winner.team1Score % 10}, {currentGame.team2} {winner.team2Score % 10}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
       </div>
-      
-      {/* Edit Player Modal */}
-      {showEditModal && selectedPlayer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 p-6 rounded-lg max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold mb-4">Edit Player: {selectedPlayer.code}</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold mb-2">Player Name</label>
-                <input
-                  type="text"
-                  value={editPlayerName}
-                  onChange={(e) => setEditPlayerName(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
-                  placeholder="John Smith"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold mb-2">Player Email</label>
-                <input
-                  type="email"
-                  value={editPlayerEmail}
-                  onChange={(e) => setEditPlayerEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
-                  placeholder="john@example.com"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold mb-2">Squares Allowed</label>
-                <input
-                  type="number"
-                  value={editSquaresAllowed}
-                  onChange={(e) => setEditSquaresAllowed(parseInt(e.target.value) || 1)}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
-                  min="1"
-                  max="25"
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleUpdatePlayer}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded font-medium"
-              >
-                Update Player
-              </button>
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setSelectedPlayer(null);
-                }}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Winner Modal */}
       {showWinnerModal && winnerData && (

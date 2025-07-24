@@ -224,15 +224,26 @@ export const generateUserCode = async (
   try {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     
-    await addDoc(collection(db, 'userCodes'), {
+    // Build the document data, only including fields with values
+    const docData: any = {
       code,
       gameId,
       isUsed: false,
       squaresAllowed,
-      playerName: playerName || undefined,
-      playerEmail: playerEmail || undefined,
       createdAt: serverTimestamp(),
-    });
+    };
+    
+    // Only add playerName if it exists
+    if (playerName) {
+      docData.playerName = playerName;
+    }
+    
+    // Only add playerEmail if it exists
+    if (playerEmail) {
+      docData.playerEmail = playerEmail;
+    }
+    
+    await addDoc(collection(db, 'userCodes'), docData);
 
     // Send email invitation if requested and email provided
     if (shouldSendEmail && playerEmail && playerName) {
@@ -285,21 +296,6 @@ export const deleteUserCode = async (codeId: string): Promise<void> => {
     await updateDoc(codeRef, { isUsed: true }); // Mark as used instead of deleting
   } catch (error) {
     console.error('Error deleting user code:', error);
-    throw error;
-  }
-};
-
-export const getUserCodeById = async (codeId: string): Promise<UserCode | null> => {
-  try {
-    const codeRef = doc(db, 'userCodes', codeId);
-    const codeSnap = await getDoc(codeRef);
-    
-    if (codeSnap.exists()) {
-      return { id: codeSnap.id, ...codeSnap.data() } as UserCode;
-    }
-    return null;
-  } catch (error) {
-    console.error('Error getting user code:', error);
     throw error;
   }
 };
