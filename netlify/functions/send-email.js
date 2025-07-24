@@ -1,5 +1,5 @@
 // Netlify Function for sending emails
-// Place this file at: netlify/functions/send-email.js
+// Place          <h2 style="color: #1f2937;">🏆 Super Squares Invitation</h2>this file at: netlify/functions/send-email.js
 
 const nodemailer = require('nodemailer');
 

@@ -1,4 +1,4 @@
-// Simple Express.js backend for sending emails
+// Simple Express.js backend for sendin          <h2 style="color: #1f2937;">🏆 Super Squares Invitation</h2> emails
 // Save this as server.js and run with: node server.js
 
 const express = require('express');

@@ -27,6 +27,7 @@ const HostDashboard: React.FC = () => {
   const [userCodes, setUserCodes] = useState<UserCode[]>([]);
   const [showCreateGame, setShowCreateGame] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   
   // Game creation form
   const [gameTitle, setGameTitle] = useState('');
@@ -846,11 +847,12 @@ const HostDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-black text-white p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 space-y-4 sm:space-y-0">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
           <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            <h1 className="text-2xl sm:text-3xl font-bold">{currentGame?.title || 'Host Dashboard'}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{currentGame?.title || 'Host Dashboard'}</h1>
             {allHostGames.length > 1 && (
               <button
                 onClick={() => setShowGameManager(true)}
@@ -876,7 +878,98 @@ const HostDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Game Manager Modal */}
+        {/* Tab Navigation */}
+        {currentGame && (
+          <div className="mb-6">
+            <div className="border-b border-gray-700">
+              <nav className="flex space-x-8 overflow-x-auto">
+                {[
+                  { id: 'overview', label: 'Overview', icon: '📊' },
+                  { id: 'players', label: 'Players', icon: '👥' },
+                  { id: 'grid', label: 'Grid', icon: '⬜' },
+                  { id: 'scores', label: 'Scores', icon: '🏆' },
+                  { id: 'settings', label: 'Settings', icon: '⚙️' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'border-blue-500 text-blue-400'
+                        : 'border-transparent text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content */}
+        {currentGame && (
+          <div className="tab-content">
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                {/* Game Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-900 p-4 rounded-lg">
+                    <h3 className="text-lg font-bold mb-2">Game Status</h3>
+                    <p className="text-2xl font-bold text-green-400">
+                      {currentGame.isActive ? 'Active' : 'Inactive'}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      {currentGame.isLocked ? '🔒 Locked' : '🔓 Open for selections'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-900 p-4 rounded-lg">
+                    <h3 className="text-lg font-bold mb-2">Players</h3>
+                    <p className="text-2xl font-bold text-blue-400">{userCodes.length}</p>
+                    <p className="text-sm text-gray-400">Total registered</p>
+                  </div>
+                  <div className="bg-gray-900 p-4 rounded-lg">
+                    <h3 className="text-lg font-bold mb-2">Squares Sold</h3>
+                    <p className="text-2xl font-bold text-yellow-400">
+                      {currentGame.squares.filter(s => s.claimed).length}/100
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      {((currentGame.squares.filter(s => s.claimed).length / 100) * 100).toFixed(1)}% filled
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="bg-gray-900 p-4 rounded-lg">
+                  <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setActiveTab('players')}
+                      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm"
+                    >
+                      Manage Players
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('scores')}
+                      className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm"
+                    >
+                      Update Scores
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('grid')}
+                      className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm"
+                    >
+                      View Grid
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Players Tab */}
+            {activeTab === 'players' && (
         {showGameManager && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-900 p-6 rounded-lg max-w-4xl w-full mx-4 max-h-96 overflow-y-auto">
