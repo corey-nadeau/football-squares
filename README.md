@@ -11,7 +11,7 @@ This is a web application built with React, Vite, TypeScript, and Tailwind CSS f
 - 🔄 **Real-time Updates**: Live score and square updates via Firestore
 
 ## Quick Start
--football-squares.nelify.app
+https://football-squares.nelify.app
 ### Prerequisites
 - Node.js and npm installed
 - Firebase project with Authentication and Firestore enabled
